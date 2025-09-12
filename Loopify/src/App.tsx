@@ -22,7 +22,9 @@ function App() {
   );
   switch (currentPage) {
     case 'login':
-      return <LoginPage onBackClick={() => setCurrentPage('home')} />;
+      return <LoginPage onBackClick={() => setCurrentPage('home')} onLoginSuccess={function (): void {
+        throw new Error('Function not implemented.');
+      } } />;
     case 'register':
       return <RegistPage onBackClick={() => setCurrentPage('home')} />;
     default:
