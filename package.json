@@ -1,0 +1,11 @@
+{
+  "name": "my-project",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite"
+  },
+  "dependencies": {
+    "bootstrap": "^5.3.8",
+    "motion": "^12.23.12"
+  }
+}
