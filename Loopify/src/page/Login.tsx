@@ -19,7 +19,7 @@ const pageStyles = `
 
 interface LoginPageProps {
   onBackClick: () => void;
-  onLoginSuccess: () => void;
+  onLoginSuccess: (account: string) => void;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess }) => {
@@ -28,22 +28,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess }) =>
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  // 2. This function handles the login logic.
   const handleLogin = () => {
-    setError(''); // Clear any previous errors
-
-    // --- THIS IS WHERE THE BACKEND LOGIC WILL GO ---
-    // For now, we will simulate it with a simple check.
-    // In the future, you will replace this with an API call to your backend.
-    if (email === 'user@loopify.com' && password === 'password123') {
-      // If the details are correct, we call the onLoginSuccess function
-      // passed down from App.tsx, which changes the page.
-      onLoginSuccess();
+    setError('');
+    if (email === password) {
+      onLoginSuccess(email); // ✅ ส่ง email กลับไป
     } else {
-      // If the details are wrong, we show an error message.
       setError('Invalid email or password. Please try again.');
     }
-    // -------------------------------------------------
   };
 
   return (
@@ -82,4 +73,3 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess }) =>
 };
 
 export default LoginPage;
-
