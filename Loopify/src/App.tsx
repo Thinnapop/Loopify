@@ -6,7 +6,13 @@ import Sidebar from './components/SideBar';
 import MainContent from './components/content';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('home'); 
+  const [currentPage, setCurrentPage] = useState('home');
+
+  // ✅ เรียกตอนล็อกอินสำเร็จ เพื่อกลับหน้า Home
+  const handleLoginSuccess = (account: string) => {
+    alert(`Welcome to Loopify: ${account}`);   // ✅ ใช้ตัวแปร account ได้แล้ว
+    setCurrentPage('home');
+  };
 
   const mainAppLayout = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#000' }}>
@@ -20,11 +26,15 @@ function App() {
       </div>
     </div>
   );
+
   switch (currentPage) {
     case 'login':
-      return <LoginPage onBackClick={() => setCurrentPage('home')} onLoginSuccess={function (): void {
-        throw new Error('Function not implemented.');
-      } } />;
+      return (
+        <LoginPage
+          onBackClick={() => setCurrentPage('home')}
+          onLoginSuccess={handleLoginSuccess}  // ⬅️ ใช้ฟังก์ชันจริง ไม่ใช่ throw
+        />
+      );
     case 'register':
       return <RegistPage onBackClick={() => setCurrentPage('home')} />;
     default:
@@ -33,4 +43,3 @@ function App() {
 }
 
 export default App;
-
