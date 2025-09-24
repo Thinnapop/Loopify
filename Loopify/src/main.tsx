@@ -17,4 +17,3 @@ if (rootElement) {
 } else {
   console.error("Failed to find the root element. Make sure your index.html has a div with id='root'.");
 }
-
