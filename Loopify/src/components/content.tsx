@@ -86,7 +86,7 @@ const contentStyles = `
   
   .carousel-track {
     display: flex;
-    gap: 24px; /* Reduced gap between slides */
+    gap: 24px;
     transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     will-change: transform;
   }
@@ -94,8 +94,8 @@ const contentStyles = `
   .carousel-slide {
     min-width: 100%;
     display: grid;
-    grid-template-columns: repeat(5, 1fr); /* Match ITEMS_PER_PAGE */
-    gap: 20px; /* Consistent gap between cards */
+    grid-template-columns: repeat(5, 1fr);
+    gap: 20px;
     padding: 0 8px;
   }
   
@@ -138,7 +138,7 @@ const contentStyles = `
     position: relative;
     opacity: 0;
     animation: fadeIn 0.5s ease forwards;
-    min-height: 280px; /* Fixed height for consistency */
+    min-height: 280px;
   }
   
   .song-card:nth-child(1) { animation-delay: 0.05s; }
@@ -303,29 +303,34 @@ interface Artist {
   followers?: string;
 }
 
+// Add props interface for MainContent
+interface MainContentProps {
+  onSongSelect: (song: Song) => void;
+}
+
 // Sample data
 const allTrendingSongs: Song[] = [
-  { id: 1, title: 'Blinding Lights', artist: 'The Weeknd', cover: 'https://picsum.photos/200?random=1', duration: '3:20' },
-  { id: 2, title: 'Shape of You', artist: 'Ed Sheeran', cover: 'https://picsum.photos/200?random=2', duration: '3:53' },
-  { id: 3, title: 'Someone You Loved', artist: 'Lewis Capaldi', cover: 'https://picsum.photos/200?random=3', duration: '3:02' },
-  { id: 4, title: 'Dance Monkey', artist: 'Tones and I', cover: 'https://picsum.photos/200?random=4', duration: '3:29' },
-  { id: 5, title: 'Rockstar', artist: 'Post Malone ft. 21 Savage', cover: 'https://picsum.photos/200?random=5', duration: '3:38' },
-  { id: 6, title: 'One Dance', artist: 'Drake', cover: 'https://picsum.photos/200?random=6', duration: '2:54' },
-  { id: 7, title: 'Closer', artist: 'The Chainsmokers', cover: 'https://picsum.photos/200?random=7', duration: '4:04' },
-  { id: 8, title: 'Stay', artist: 'The Kid LAROI & Justin Bieber', cover: 'https://picsum.photos/200?random=8', duration: '2:21' },
-  { id: 9, title: 'Believer', artist: 'Imagine Dragons', cover: 'https://picsum.photos/200?random=9', duration: '3:24' },
-  { id: 10, title: 'Perfect', artist: 'Ed Sheeran', cover: 'https://picsum.photos/200?random=10', duration: '4:23' },
-  { id: 11, title: 'Bad Guy', artist: 'Billie Eilish', cover: 'https://picsum.photos/200?random=11', duration: '3:14' },
-  { id: 12, title: 'Señorita', artist: 'Shawn Mendes & Camila Cabello', cover: 'https://picsum.photos/200?random=12', duration: '3:11' },
-  { id: 13, title: 'Memories', artist: 'Maroon 5', cover: 'https://picsum.photos/200?random=13', duration: '3:09' },
-  { id: 14, title: 'Lucid Dreams', artist: 'Juice WRLD', cover: 'https://picsum.photos/200?random=14', duration: '3:59' },
-  { id: 15, title: 'Old Town Road', artist: 'Lil Nas X', cover: 'https://picsum.photos/200?random=15', duration: '2:37' },
-  { id: 16, title: 'Sunflower', artist: 'Post Malone & Swae Lee', cover: 'https://picsum.photos/200?random=16', duration: '2:38' },
-  { id: 17, title: 'Without Me', artist: 'The Weeknd', cover: 'https://picsum.photos/200?random=17', duration: '3:20' },
-  { id: 18, title: 'Happier', artist: 'Marshmello ft. Bastille', cover: 'https://picsum.photos/200?random=18', duration: '3:34' },
-  { id: 19, title: 'Thunder', artist: 'Imagine Dragons', cover: 'https://picsum.photos/200?random=19', duration: '3:07' },
-  { id: 20, title: 'Havana', artist: 'Camila Cabello ft. Young Thug', cover: 'https://picsum.photos/200?random=20', duration: '3:37' },
-  { id: 21, title: 'Circles', artist: 'Post Malone', cover: 'https://picsum.photos/200?random=21', duration: '3:35' },
+  { id: 1, title: 'Blinding Lights', artist: 'The Weeknd', cover: 'https://picsum.photos/200?random=1', duration: '3:20', album: 'After Hours' },
+  { id: 2, title: 'Shape of You', artist: 'Ed Sheeran', cover: 'https://picsum.photos/200?random=2', duration: '3:53', album: '÷ (Divide)' },
+  { id: 3, title: 'Someone You Loved', artist: 'Lewis Capaldi', cover: 'https://picsum.photos/200?random=3', duration: '3:02', album: 'Divinely Uninspired to a Hellish Extent' },
+  { id: 4, title: 'Dance Monkey', artist: 'Tones and I', cover: 'https://picsum.photos/200?random=4', duration: '3:29', album: 'The Kids Are Coming' },
+  { id: 5, title: 'Rockstar', artist: 'Post Malone ft. 21 Savage', cover: 'https://picsum.photos/200?random=5', duration: '3:38', album: 'Beerbongs & Bentleys' },
+  { id: 6, title: 'One Dance', artist: 'Drake', cover: 'https://picsum.photos/200?random=6', duration: '2:54', album: 'Views' },
+  { id: 7, title: 'Closer', artist: 'The Chainsmokers', cover: 'https://picsum.photos/200?random=7', duration: '4:04', album: 'Collage' },
+  { id: 8, title: 'Stay', artist: 'The Kid LAROI & Justin Bieber', cover: 'https://picsum.photos/200?random=8', duration: '2:21', album: 'F*ck Love 3' },
+  { id: 9, title: 'Believer', artist: 'Imagine Dragons', cover: 'https://picsum.photos/200?random=9', duration: '3:24', album: 'Evolve' },
+  { id: 10, title: 'Perfect', artist: 'Ed Sheeran', cover: 'https://picsum.photos/200?random=10', duration: '4:23', album: '÷ (Divide)' },
+  { id: 11, title: 'Bad Guy', artist: 'Billie Eilish', cover: 'https://picsum.photos/200?random=11', duration: '3:14', album: 'When We All Fall Asleep, Where Do We Go?' },
+  { id: 12, title: 'Señorita', artist: 'Shawn Mendes & Camila Cabello', cover: 'https://picsum.photos/200?random=12', duration: '3:11', album: 'Shawn Mendes' },
+  { id: 13, title: 'Memories', artist: 'Maroon 5', cover: 'https://picsum.photos/200?random=13', duration: '3:09', album: 'Memories' },
+  { id: 14, title: 'Lucid Dreams', artist: 'Juice WRLD', cover: 'https://picsum.photos/200?random=14', duration: '3:59', album: 'Goodbye & Good Riddance' },
+  { id: 15, title: 'Old Town Road', artist: 'Lil Nas X', cover: 'https://picsum.photos/200?random=15', duration: '2:37', album: '7 EP' },
+  { id: 16, title: 'Sunflower', artist: 'Post Malone & Swae Lee', cover: 'https://picsum.photos/200?random=16', duration: '2:38', album: 'Spider-Man: Into the Spider-Verse' },
+  { id: 17, title: 'Without Me', artist: 'The Weeknd', cover: 'https://picsum.photos/200?random=17', duration: '3:20', album: 'My Dear Melancholy,' },
+  { id: 18, title: 'Happier', artist: 'Marshmello ft. Bastille', cover: 'https://picsum.photos/200?random=18', duration: '3:34', album: 'Happier' },
+  { id: 19, title: 'Thunder', artist: 'Imagine Dragons', cover: 'https://picsum.photos/200?random=19', duration: '3:07', album: 'Evolve' },
+  { id: 20, title: 'Havana', artist: 'Camila Cabello ft. Young Thug', cover: 'https://picsum.photos/200?random=20', duration: '3:37', album: 'Camila' },
+  { id: 21, title: 'Circles', artist: 'Post Malone', cover: 'https://picsum.photos/200?random=21', duration: '3:35', album: 'Hollywood\'s Bleeding' },
 ];
 
 const allPopularArtists: Artist[] = [
@@ -345,7 +350,8 @@ const allPopularArtists: Artist[] = [
   { id: 14, name: 'BTS', type: 'Group', avatar: 'https://picsum.photos/200?random=114', followers: '73M followers' },
 ];
 
-const MainContent: React.FC = () => {
+// Update component to accept props
+const MainContent: React.FC<MainContentProps> = ({ onSongSelect }) => {
   // State for pagination
   const [songPage, setSongPage] = useState(0);
   const [artistPage, setArtistPage] = useState(0);
@@ -459,16 +465,18 @@ const MainContent: React.FC = () => {
     }
   };
   
-  // Play song handler
+  // Updated play song handler - now calls onSongSelect
   const handlePlaySong = (song: Song) => {
     console.log('Playing:', song.title, 'by', song.artist);
+    // Call the onSongSelect prop function to open the player
+    onSongSelect(song);
   };
   
   // View artist handler
   const handleViewArtist = (artist: Artist) => {
     console.log('Viewing artist:', artist.name);
   };
-
+  
   return (
     <>
       <style>{contentStyles}</style>
