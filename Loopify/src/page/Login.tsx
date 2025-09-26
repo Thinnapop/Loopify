@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const pageStyles = `
   body, html {
@@ -271,6 +271,19 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess, onRe
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Check if user just registered and pre-fill display name
+  useEffect(() => {
+    const registeredUser = localStorage.getItem('registeredUser');
+    if (registeredUser) {
+      try {
+        const userData = JSON.parse(registeredUser);
+        setDisplayName(userData.displayName || '');
+      } catch (error) {
+        console.error('Error parsing registered user data');
+      }
+    }
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -297,16 +310,36 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess, onRe
     setTimeout(() => {
       setIsLoading(false);
       
+      // Get registered user data if available
+      let userData: any = { displayName };
+      const registeredUser = localStorage.getItem('registeredUser');
+      
+      if (registeredUser) {
+        try {
+          const parsedData = JSON.parse(registeredUser);
+          if (parsedData.displayName === displayName) {
+            // Use full registered data if display names match
+            userData = parsedData;
+          }
+        } catch (error) {
+          console.error('Error parsing user data');
+        }
+      }
+      
       // Demo login logic (in production, this would be an API call)
       if (displayName === 'DemoUser' && password === 'demo123') {
         if (rememberMe) {
-          // In a real app, you'd set a persistent session here
-          localStorage.setItem('loopifyUser', displayName);
+          localStorage.setItem('loopifyUser', JSON.stringify(userData));
         }
         onLoginSuccess(displayName);
+        localStorage.removeItem('registeredUser'); // Clear registration data after login
       } else if (displayName === password) {
         // Keep your original logic for testing
+        if (rememberMe) {
+          localStorage.setItem('loopifyUser', JSON.stringify(userData));
+        }
         onLoginSuccess(displayName);
+        localStorage.removeItem('registeredUser');
       } else {
         setError('Invalid display name or password. Please try again.');
       }
