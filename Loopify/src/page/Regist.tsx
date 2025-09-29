@@ -226,7 +226,7 @@ const pageStyles = `
     border: 1px solid #f44336;
     border-radius: 8px;
     padding: 12px;
-    margin-bottom: 20px;
+    margin-top: 20px;
     color: #f44336;
     font-size: 14px;
     text-align: center;
@@ -238,7 +238,7 @@ const pageStyles = `
     border: 1px solid #1db954;
     border-radius: 8px;
     padding: 12px;
-    margin-bottom: 20px;
+    margin-top: 20px;
     color: #1db954;
     font-size: 14px;
     text-align: center;
@@ -253,7 +253,7 @@ const pageStyles = `
 
 // Props interface
 interface RegistPageProps {
-  onBackClick: () => void;
+  onBackClick?: () => void;
   onRegistrationSuccess?: () => void;
 }
 
@@ -265,16 +265,20 @@ interface FormData {
   confirmPassword: string;
   country: string;
   sex: string;
+  language: string;
 }
 
-const RegistPage: React.FC<RegistPageProps> = ({ onBackClick, onRegistrationSuccess }) => {
+const API_URL = 'http://localhost:5001/api';
+
+export default function RegistPage({ onBackClick = () => {}, onRegistrationSuccess = () => {} }: RegistPageProps) {
   const [formData, setFormData] = useState<FormData>({
     displayName: '',
     email: '',
     password: '',
     confirmPassword: '',
     country: '',
-    sex: ''
+    sex: '',
+    language: 'en'
   });
 
   const [error, setError] = useState('');
@@ -379,35 +383,67 @@ const RegistPage: React.FC<RegistPageProps> = ({ onBackClick, onRegistrationSucc
     setIsLoading(true);
     setError('');
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      setSuccess('Account created successfully! Redirecting to login...');
-      
-      // Log the registration data (in production, send to backend)
-      console.log('User registered:', {
-        displayName: formData.displayName,
-        email: formData.email,
-        country: formData.country,
-        sex: formData.sex
+    try {
+      // Call backend API to register user
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          displayName: formData.displayName,
+          email: formData.email,
+          password: formData.password,
+          country: formData.country,
+          language: formData.language
+          // Note: 'sex' field is not in the backend schema, so we're not sending it
+        })
       });
 
-      // Redirect after 2 seconds
-      setTimeout(() => {
-        if (onRegistrationSuccess) {
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess('Account created successfully! Redirecting to login...');
+        
+        // Store success message for login page
+        localStorage.setItem('registrationSuccess', 'Registration successful! Please login with your credentials.');
+        
+        // Store user data temporarily for login page
+        localStorage.setItem('registeredEmail', formData.email);
+        
+        console.log('User registered successfully:', data);
+
+        // Redirect to login page after 2 seconds
+        setTimeout(() => {
           onRegistrationSuccess();
-        } else {
-          onBackClick();
-        }
+        }, 2000);
+      } else {
+        setError(data.error || 'Registration failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      
+      // Show more helpful error message
+      setError('Cannot connect to server. Please make sure the backend server is running on http://localhost:5000');
+      
+      // For demo purposes, still allow navigation
+      setTimeout(() => {
+        localStorage.setItem('demoUser', JSON.stringify({
+          displayName: formData.displayName,
+          email: formData.email,
+          country: formData.country
+        }));
+        localStorage.setItem('registrationSuccess', 'Demo account created! (Server offline - demo mode)');
+        onRegistrationSuccess();
       }, 2000);
-    }, 1500);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleLoginClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (onRegistrationSuccess) {
-      onRegistrationSuccess();
-    }
+    onRegistrationSuccess();
   };
 
   return (
@@ -420,7 +456,7 @@ const RegistPage: React.FC<RegistPageProps> = ({ onBackClick, onRegistrationSucc
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">Display Name</label>
+              <label className="form-label">Display Name *</label>
               <input
                 type="text"
                 name="displayName"
@@ -429,11 +465,12 @@ const RegistPage: React.FC<RegistPageProps> = ({ onBackClick, onRegistrationSucc
                 value={formData.displayName}
                 onChange={handleInputChange}
                 disabled={isLoading}
+                required
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Email</label>
+              <label className="form-label">Email *</label>
               <input
                 type="email"
                 name="email"
@@ -442,11 +479,12 @@ const RegistPage: React.FC<RegistPageProps> = ({ onBackClick, onRegistrationSucc
                 value={formData.email}
                 onChange={handleInputChange}
                 disabled={isLoading}
+                required
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Password</label>
+              <label className="form-label">Password *</label>
               <input
                 type="password"
                 name="password"
@@ -455,11 +493,12 @@ const RegistPage: React.FC<RegistPageProps> = ({ onBackClick, onRegistrationSucc
                 value={formData.password}
                 onChange={handleInputChange}
                 disabled={isLoading}
+                required
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Confirm Password</label>
+              <label className="form-label">Confirm Password *</label>
               <input
                 type="password"
                 name="confirmPassword"
@@ -468,17 +507,19 @@ const RegistPage: React.FC<RegistPageProps> = ({ onBackClick, onRegistrationSucc
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 disabled={isLoading}
+                required
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Country</label>
+              <label className="form-label">Country *</label>
               <select
                 name="country"
                 className="form-select"
                 value={formData.country}
                 onChange={handleInputChange}
                 disabled={isLoading}
+                required
               >
                 <option value="">Select your country</option>
                 {countries.map(country => (
@@ -490,7 +531,7 @@ const RegistPage: React.FC<RegistPageProps> = ({ onBackClick, onRegistrationSucc
             </div>
 
             <div className="form-group">
-              <label className="form-label">Sex</label>
+              <label className="form-label">Sex *</label>
               <div className="radio-group">
                 <div className="radio-option">
                   <input
@@ -502,6 +543,7 @@ const RegistPage: React.FC<RegistPageProps> = ({ onBackClick, onRegistrationSucc
                     checked={formData.sex === 'male'}
                     onChange={handleInputChange}
                     disabled={isLoading}
+                    required
                   />
                   <label htmlFor="male" className="radio-label">Male</label>
                 </div>
@@ -562,6 +604,4 @@ const RegistPage: React.FC<RegistPageProps> = ({ onBackClick, onRegistrationSucc
       </div>
     </>
   );
-};
-
-export default RegistPage;
+}

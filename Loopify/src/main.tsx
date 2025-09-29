@@ -9,9 +9,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 )
 // --- API Configuration ---
-const API_BASE_URL = 'http://localhost:5177/api'; // Your backend URL
+const API_BASE_URL = 'http://localhost:5000/api'; // Your backend URL
 
-// --- INTERFACES ---
 interface Song {
   id: number;
   title: string;
@@ -37,7 +36,26 @@ interface ApiResponse<T> {
   totalPages: number;
 }
 
-
+// Add this at the top of the component
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      // Fetch trending songs
+      const songsResponse = await fetch('http://localhost:5000/api/songs/trending');
+      const songs = await songsResponse.json();
+      setAllTrendingSongs(songs);
+      
+      // Fetch popular artists
+      const artistsResponse = await fetch('http://localhost:5000/api/artists/popular');
+      const artists = await artistsResponse.json();
+      setAllPopularArtists(artists);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+  
+  fetchData();
+}, []);
 // --- API FUNCTIONS ---
 const apiService = {
   async fetchTrendingSongs(page: number = 1, limit: number = 5): Promise<ApiResponse<Song>> {
@@ -578,3 +596,11 @@ const MainContent: React.FC = () => {
 };
 
 export default MainContent;
+
+function setAllTrendingSongs(songs: any) {
+  throw new Error('Function not implemented.');
+}
+function setAllPopularArtists(artists: any) {
+  throw new Error('Function not implemented.');
+}
+

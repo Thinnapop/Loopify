@@ -137,6 +137,16 @@ const pageStyles = `
     border-radius: 4px;
     animation: shake 0.5s;
   }
+
+  .success-message {
+    color: #4caf50;
+    margin-bottom: 15px;
+    font-size: 14px;
+    text-align: center;
+    padding: 10px;
+    background-color: rgba(76, 175, 80, 0.1);
+    border-radius: 4px;
+  }
   
   @keyframes shake {
     0%, 100% { transform: translateX(0); }
@@ -256,6 +266,26 @@ const pageStyles = `
     color: #1ed760;
     text-align: center;
   }
+
+  .test-accounts {
+    background-color: rgba(29, 185, 84, 0.05);
+    border: 1px solid rgba(29, 185, 84, 0.3);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 20px;
+    font-size: 12px;
+    color: #b3b3b3;
+  }
+
+  .test-accounts h4 {
+    margin: 0 0 8px 0;
+    color: #1ed760;
+    font-size: 13px;
+  }
+
+  .test-accounts p {
+    margin: 4px 0;
+  }
 `;
 
 interface LoginPageProps {
@@ -264,33 +294,34 @@ interface LoginPageProps {
   onRegisterClick?: () => void;
 }
 
+const API_URL = 'http://localhost:5001/api';
+
 const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess, onRegisterClick }) => {
-  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Check if user just registered and pre-fill display name
+  // Check if user just registered
   useEffect(() => {
-    const registeredUser = localStorage.getItem('registeredUser');
-    if (registeredUser) {
-      try {
-        const userData = JSON.parse(registeredUser);
-        setDisplayName(userData.displayName || '');
-      } catch (error) {
-        console.error('Error parsing registered user data');
-      }
+    const registeredMessage = localStorage.getItem('registrationSuccess');
+    if (registeredMessage) {
+      setSuccess(registeredMessage);
+      localStorage.removeItem('registrationSuccess');
+      setTimeout(() => setSuccess(''), 5000);
     }
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     
     // Basic validation
-    if (!displayName.trim()) {
-      setError('Please enter your display name');
+    if (!email.trim()) {
+      setError('Please enter your email');
       return;
     }
 
@@ -299,57 +330,65 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess, onRe
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      // Get registered user data if available
-      let userData: any = { displayName };
-      const registeredUser = localStorage.getItem('registeredUser');
-      
-      if (registeredUser) {
-        try {
-          const parsedData = JSON.parse(registeredUser);
-          if (parsedData.displayName === displayName) {
-            // Use full registered data if display names match
-            userData = parsedData;
-          }
-        } catch (error) {
-          console.error('Error parsing user data');
-        }
-      }
-      
-      // Demo login logic (in production, this would be an API call)
-      if (displayName === 'DemoUser' && password === 'demo123') {
+    try {
+      // First try real backend API
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Store auth token
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('loopifyUser', JSON.stringify(data.user));
+        
         if (rememberMe) {
-          localStorage.setItem('loopifyUser', JSON.stringify(userData));
+          localStorage.setItem('rememberUser', 'true');
         }
-        onLoginSuccess(displayName);
-        localStorage.removeItem('registeredUser'); // Clear registration data after login
-      } else if (displayName === password) {
-        // Keep your original logic for testing
-        if (rememberMe) {
-          localStorage.setItem('loopifyUser', JSON.stringify(userData));
-        }
-        onLoginSuccess(displayName);
-        localStorage.removeItem('registeredUser');
+
+        onLoginSuccess(data.user.displayName);
       } else {
-        setError('Invalid display name or password. Please try again.');
+        setError(data.error || 'Invalid email or password');
       }
-    }, 1000);
+    } catch (error) {
+      console.error('Login error:', error);
+      
+      // Fallback to demo mode if backend is not running
+      if (email === 'demo@loopify.com' && password === 'demo123') {
+        const demoUser = {
+          userId: 'demo_user',
+          displayName: 'Demo User',
+          email: 'demo@loopify.com'
+        };
+        
+        localStorage.setItem('loopifyUser', JSON.stringify(demoUser));
+        onLoginSuccess(demoUser.displayName);
+      } else {
+        setError('Cannot connect to server. Please ensure the backend is running on port 5000.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleQuickLogin = (email: string, password: string) => {
+    setEmail(email);
+    setPassword(password);
   };
 
   const handleSocialLogin = (provider: string) => {
     console.log(`Login with ${provider}`);
-    // Implement social login logic here
-    alert(`Social login with ${provider} coming soon!`);
+    setError('Social login coming soon!');
   };
 
   return (
@@ -363,26 +402,34 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess, onRe
           
           <h1>Log in to continue</h1>
 
-          <div className="demo-hint">
-            💡 Demo: Use display name "DemoUser" and password "demo123"
-            <br />Or make display name and password the same for testing
+          {success && <div className="success-message">{success}</div>}
+
+          <div className="test-accounts">
+            <h4>Test Accounts (Click to fill):</h4>
+            <p onClick={() => handleQuickLogin('demo@loopify.com', 'demo123')} style={{ cursor: 'pointer', color: '#1db954' }}>
+              Demo: demo@loopify.com / demo123
+            </p>
+            <p style={{ fontSize: '11px', marginTop: '8px' }}>
+              Or register a new account with the Sign Up button below
+            </p>
           </div>
 
           <form onSubmit={handleLogin}>
             <div className="form-group">
-              <label className="form-label" htmlFor="displayName">
-                Display Name
+              <label className="form-label" htmlFor="email">
+                Email
               </label>
               <input
-                type="text"
-                id="displayName"
-                placeholder="Enter your display name"
-                value={displayName}
+                type="email"
+                id="email"
+                placeholder="Enter your email"
+                value={email}
                 onChange={(e) => {
-                  setDisplayName(e.target.value);
+                  setEmail(e.target.value);
                   if (error) setError('');
                 }}
                 disabled={isLoading}
+                required
               />
             </div>
 
@@ -400,6 +447,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess, onRe
                   if (error) setError('');
                 }}
                 disabled={isLoading}
+                required
               />
             </div>
 
@@ -424,7 +472,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess, onRe
           <div className="forgot-password">
             <a href="#" onClick={(e) => {
               e.preventDefault();
-              alert('Password reset feature coming soon!');
+              setError('Password reset feature coming soon!');
             }}>
               Forgot your password?
             </a>

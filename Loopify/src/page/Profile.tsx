@@ -475,11 +475,71 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
   });
 
   useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+        
+        const response = await fetch('http://localhost:5001/api/auth/profile', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          setEditedUser(userData);
+          // Update parent component if needed
+          if (onUpdateUser) {
+            onUpdateUser(userData);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      }
+    };
+    
+    fetchUserProfile();
+  }, []);
+  useEffect(() => {
     if (currentUser) {
       setEditedUser(currentUser);
     }
   }, [currentUser]);
-
+  const [userStats, setUserStats] = useState({
+    PlaylistCount: 0,
+    FollowerCount: 0,
+    FollowingCount: 0,
+    MinutesListened: 0,
+    SongsLiked: 0
+  });
+  
+  useEffect(() => {
+    const fetchUserStats = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+        
+        const response = await fetch('http://localhost:5001/api/user/stats', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const stats = await response.json();
+          setUserStats(stats);
+        }
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    };
+    
+    fetchUserStats();
+  }, []);
+  
+  // Then in your JSX:
+  
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setEditedUser(prev => ({
@@ -555,15 +615,15 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
               <h1 className="profile-name">{currentUser?.displayName || 'User'}</h1>
               <div className="profile-stats">
                 <div className="profile-stat">
-                  <span className="stat-value">127</span>
+                  <span className="stat-value">{userStats.PlaylistCount}</span>
                   <span>Playlists</span>
                 </div>
                 <div className="profile-stat">
-                  <span className="stat-value">2.5K</span>
+                  <span className="stat-value">{userStats.FollowerCount}</span>
                   <span>Followers</span>
                 </div>
                 <div className="profile-stat">
-                  <span className="stat-value">843</span>
+                  <span className="stat-value">{userStats.FollowingCount}</span>
                   <span>Following</span>
                 </div>
               </div>
@@ -630,22 +690,22 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
             <div className="activity-cards">
               <div className="activity-card">
                 <p className="activity-title">Minutes Listened</p>
-                <p className="activity-value">15,724</p>
+                <p className="activity-value">0</p>
                 <p className="activity-subtitle">This month</p>
               </div>
               <div className="activity-card">
                 <p className="activity-title">Top Genre</p>
-                <p className="activity-value">Pop</p>
+                <p className="activity-value">--</p>
                 <p className="activity-subtitle">Most played</p>
               </div>
               <div className="activity-card">
                 <p className="activity-title">Songs Liked</p>
-                <p className="activity-value">1,842</p>
+                <p className="activity-value">0</p>
                 <p className="activity-subtitle">Total favorites</p>
               </div>
               <div className="activity-card">
                 <p className="activity-title">Artists Followed</p>
-                <p className="activity-value">234</p>
+                <p className="activity-value">0</p>
                 <p className="activity-subtitle">Growing collection</p>
               </div>
             </div>
