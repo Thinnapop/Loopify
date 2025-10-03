@@ -513,12 +513,14 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
     MinutesListened: 0,
     SongsLiked: 0
   });
-  
   useEffect(() => {
     const fetchUserStats = async () => {
       try {
         const token = localStorage.getItem('authToken');
-        if (!token) return;
+        if (!token) {
+          console.log('No auth token found');
+          return;
+        }
         
         const response = await fetch('http://localhost:5001/api/user/stats', {
           headers: {
@@ -529,9 +531,13 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
         if (response.ok) {
           const stats = await response.json();
           setUserStats(stats);
+        } else {
+          console.log('Stats endpoint not available yet');
+          // Keep default stats
         }
       } catch (error) {
-        console.error('Error fetching stats:', error);
+        console.log('Stats feature coming soon');
+        // Keep default stats
       }
     };
     

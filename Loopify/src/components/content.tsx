@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import AddToPlaylistModal from './AddToPlaylistModal';
 
-// --- STYLES for this component ---
 const contentStyles = `
   .main-content {
     flex: 1;
@@ -129,6 +129,10 @@ const contentStyles = `
     }
   }
   
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
   .song-card {
     background-color: #181818;
     border-radius: 8px;
@@ -139,6 +143,8 @@ const contentStyles = `
     opacity: 0;
     animation: fadeIn 0.5s ease forwards;
     min-height: 280px;
+    display: flex;
+    flex-direction: column;
   }
   
   .song-card:nth-child(1) { animation-delay: 0.05s; }
@@ -164,22 +170,32 @@ const contentStyles = `
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   }
   
+  .card-image-container {
+    position: relative;
+    flex-shrink: 0;
+    margin-bottom: 12px;
+  }
+  
   .song-card img {
     width: 100%;
     aspect-ratio: 1;
     border-radius: 8px;
-    margin-bottom: 12px;
     object-fit: cover;
+    display: block;
   }
   
   .song-card h3 {
     font-size: 14px;
     margin: 0 0 4px 0;
     color: #fff;
-    white-space: nowrap;
+    font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-weight: 600;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.4;
+    max-height: 2.8em;
   }
   
   .song-card p {
@@ -206,11 +222,41 @@ const contentStyles = `
     transform: translateY(8px);
     transition: all 0.3s ease;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10;
   }
   
   .song-card:hover .play-button-overlay {
     opacity: 1;
     transform: translateY(0);
+  }
+  
+  .add-to-playlist-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s;
+    z-index: 15;
+  }
+  
+  .song-card:hover .add-to-playlist-btn {
+    opacity: 1;
+  }
+  
+  .add-to-playlist-btn:hover {
+    background: #1db954;
+    transform: scale(1.1);
   }
   
   .play-icon {
@@ -227,10 +273,6 @@ const contentStyles = `
   
   .artist-card img {
     border-radius: 50%;
-  }
-  
-  .card-image-container {
-    position: relative;
   }
   
   .pagination-info {
@@ -252,6 +294,7 @@ const contentStyles = `
     border-radius: 50%;
     background-color: rgba(255, 255, 255, 0.3);
     transition: all 0.3s ease;
+    cursor: pointer;
   }
   
   .dot.active {
@@ -285,7 +328,6 @@ const contentStyles = `
   }
 `;
 
-// --- INTERFACES ---
 interface Song {
   id: number;
   title: string;
@@ -293,6 +335,7 @@ interface Song {
   cover: string;
   duration?: string;
   album?: string;
+  audioUrl?: string;
 }
 
 interface Artist {
@@ -303,70 +346,71 @@ interface Artist {
   followers?: string;
 }
 
-// Add props interface for MainContent
 interface MainContentProps {
   onSongSelect: (song: Song) => void;
+  onArtistSelect: (artist: Artist) => void;
 }
 
-// Sample data
-const allTrendingSongs: Song[] = [
-  { id: 1, title: 'Blinding Lights', artist: 'The Weeknd', cover: 'https://picsum.photos/200?random=1', duration: '3:20', album: 'After Hours' },
-  { id: 2, title: 'Shape of You', artist: 'Ed Sheeran', cover: 'https://picsum.photos/200?random=2', duration: '3:53', album: '÷ (Divide)' },
-  { id: 3, title: 'Someone You Loved', artist: 'Lewis Capaldi', cover: 'https://picsum.photos/200?random=3', duration: '3:02', album: 'Divinely Uninspired to a Hellish Extent' },
-  { id: 4, title: 'Dance Monkey', artist: 'Tones and I', cover: 'https://picsum.photos/200?random=4', duration: '3:29', album: 'The Kids Are Coming' },
-  { id: 5, title: 'Rockstar', artist: 'Post Malone ft. 21 Savage', cover: 'https://picsum.photos/200?random=5', duration: '3:38', album: 'Beerbongs & Bentleys' },
-  { id: 6, title: 'One Dance', artist: 'Drake', cover: 'https://picsum.photos/200?random=6', duration: '2:54', album: 'Views' },
-  { id: 7, title: 'Closer', artist: 'The Chainsmokers', cover: 'https://picsum.photos/200?random=7', duration: '4:04', album: 'Collage' },
-  { id: 8, title: 'Stay', artist: 'The Kid LAROI & Justin Bieber', cover: 'https://picsum.photos/200?random=8', duration: '2:21', album: 'F*ck Love 3' },
-  { id: 9, title: 'Believer', artist: 'Imagine Dragons', cover: 'https://picsum.photos/200?random=9', duration: '3:24', album: 'Evolve' },
-  { id: 10, title: 'Perfect', artist: 'Ed Sheeran', cover: 'https://picsum.photos/200?random=10', duration: '4:23', album: '÷ (Divide)' },
-  { id: 11, title: 'Bad Guy', artist: 'Billie Eilish', cover: 'https://picsum.photos/200?random=11', duration: '3:14', album: 'When We All Fall Asleep, Where Do We Go?' },
-  { id: 12, title: 'Señorita', artist: 'Shawn Mendes & Camila Cabello', cover: 'https://picsum.photos/200?random=12', duration: '3:11', album: 'Shawn Mendes' },
-  { id: 13, title: 'Memories', artist: 'Maroon 5', cover: 'https://picsum.photos/200?random=13', duration: '3:09', album: 'Memories' },
-  { id: 14, title: 'Lucid Dreams', artist: 'Juice WRLD', cover: 'https://picsum.photos/200?random=14', duration: '3:59', album: 'Goodbye & Good Riddance' },
-  { id: 15, title: 'Old Town Road', artist: 'Lil Nas X', cover: 'https://picsum.photos/200?random=15', duration: '2:37', album: '7 EP' },
-  { id: 16, title: 'Sunflower', artist: 'Post Malone & Swae Lee', cover: 'https://picsum.photos/200?random=16', duration: '2:38', album: 'Spider-Man: Into the Spider-Verse' },
-  { id: 17, title: 'Without Me', artist: 'The Weeknd', cover: 'https://picsum.photos/200?random=17', duration: '3:20', album: 'My Dear Melancholy,' },
-  { id: 18, title: 'Happier', artist: 'Marshmello ft. Bastille', cover: 'https://picsum.photos/200?random=18', duration: '3:34', album: 'Happier' },
-  { id: 19, title: 'Thunder', artist: 'Imagine Dragons', cover: 'https://picsum.photos/200?random=19', duration: '3:07', album: 'Evolve' },
-  { id: 20, title: 'Havana', artist: 'Camila Cabello ft. Young Thug', cover: 'https://picsum.photos/200?random=20', duration: '3:37', album: 'Camila' },
-  { id: 21, title: 'Circles', artist: 'Post Malone', cover: 'https://picsum.photos/200?random=21', duration: '3:35', album: 'Hollywood\'s Bleeding' },
-];
-
-const allPopularArtists: Artist[] = [
-  { id: 1, name: 'Taylor Swift', type: 'Artist', avatar: 'https://picsum.photos/200?random=101', followers: '92M followers' },
-  { id: 2, name: 'Drake', type: 'Artist', avatar: 'https://picsum.photos/200?random=102', followers: '78M followers' },
-  { id: 3, name: 'Bad Bunny', type: 'Artist', avatar: 'https://picsum.photos/200?random=103', followers: '67M followers' },
-  { id: 4, name: 'The Weeknd', type: 'Artist', avatar: 'https://picsum.photos/200?random=104', followers: '95M followers' },
-  { id: 5, name: 'Ariana Grande', type: 'Artist', avatar: 'https://picsum.photos/200?random=105', followers: '85M followers' },
-  { id: 6, name: 'Ed Sheeran', type: 'Artist', avatar: 'https://picsum.photos/200?random=106', followers: '88M followers' },
-  { id: 7, name: 'Billie Eilish', type: 'Artist', avatar: 'https://picsum.photos/200?random=107', followers: '71M followers' },
-  { id: 8, name: 'Justin Bieber', type: 'Artist', avatar: 'https://picsum.photos/200?random=108', followers: '72M followers' },
-  { id: 9, name: 'Eminem', type: 'Artist', avatar: 'https://picsum.photos/200?random=109', followers: '65M followers' },
-  { id: 10, name: 'Rihanna', type: 'Artist', avatar: 'https://picsum.photos/200?random=110', followers: '61M followers' },
-  { id: 11, name: 'Post Malone', type: 'Artist', avatar: 'https://picsum.photos/200?random=111', followers: '58M followers' },
-  { id: 12, name: 'Dua Lipa', type: 'Artist', avatar: 'https://picsum.photos/200?random=112', followers: '55M followers' },
-  { id: 13, name: 'Olivia Rodrigo', type: 'Artist', avatar: 'https://picsum.photos/200?random=113', followers: '42M followers' },
-  { id: 14, name: 'BTS', type: 'Group', avatar: 'https://picsum.photos/200?random=114', followers: '73M followers' },
-];
-
-// Update component to accept props
-const MainContent: React.FC<MainContentProps> = ({ onSongSelect }) => {
-  // State for pagination
+const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect }) => {
+  const [allTrendingSongs, setAllTrendingSongs] = useState<Song[]>([]);
+  const [allPopularArtists, setAllPopularArtists] = useState<Artist[]>([]);
+  const [isLoadingSongs, setIsLoadingSongs] = useState(true);
+  const [isLoadingArtists, setIsLoadingArtists] = useState(true);
+  
   const [songPage, setSongPage] = useState(0);
   const [artistPage, setArtistPage] = useState(0);
   const [songSlideDirection, setSongSlideDirection] = useState<'left' | 'right' | ''>('');
   const [artistSlideDirection, setArtistSlideDirection] = useState<'left' | 'right' | ''>('');
   const [isAnimating, setIsAnimating] = useState(false);
   
-  // Configuration
-  const ITEMS_PER_PAGE = 5;
+  const [showAddToPlaylistModal, setShowAddToPlaylistModal] = useState(false);
+  const [selectedTrackId, setSelectedTrackId] = useState<number | null>(null);
   
-  // Calculate total pages
+  const ITEMS_PER_PAGE = 5;
+
+  useEffect(() => {
+    const fetchTracks = async () => {
+      try {
+        setIsLoadingSongs(true);
+        const response = await fetch('http://localhost:5001/api/jamendo/tracks?limit=50');
+        const data = await response.json();
+        
+        const tracksWithProxy = data.map((track: Song) => ({
+          ...track,
+          audioUrl: `http://localhost:5001/api/stream/${track.id}`
+        }));
+        
+        setAllTrendingSongs(tracksWithProxy);
+      } catch (error) {
+        console.error('Failed to fetch tracks:', error);
+      } finally {
+        setIsLoadingSongs(false);
+      }
+    };
+    
+    fetchTracks();
+  }, []);
+
+  useEffect(() => {
+    const fetchArtists = async () => {
+      try {
+        setIsLoadingArtists(true);
+        const response = await fetch('http://localhost:5001/api/jamendo/artists?limit=20');
+        const data = await response.json();
+        setAllPopularArtists(data);
+      } catch (error) {
+        console.error('Failed to fetch artists:', error);
+      } finally {
+        setIsLoadingArtists(false);
+      }
+    };
+    
+    fetchArtists();
+  }, []);
+
   const totalSongPages = Math.ceil(allTrendingSongs.length / ITEMS_PER_PAGE);
   const totalArtistPages = Math.ceil(allPopularArtists.length / ITEMS_PER_PAGE);
   
-  // Get current visible items
   const getCurrentSongs = () => {
     const start = songPage * ITEMS_PER_PAGE;
     const end = start + ITEMS_PER_PAGE;
@@ -379,7 +423,6 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect }) => {
     return allPopularArtists.slice(start, end);
   };
   
-  // Navigation handlers with animation
   const handleSongPrevious = () => {
     if (songPage > 0 && !isAnimating) {
       setIsAnimating(true);
@@ -436,7 +479,6 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect }) => {
     }
   };
   
-  // Direct page navigation (clicking dots)
   const handleSongPageDirect = (pageIndex: number) => {
     if (pageIndex !== songPage && !isAnimating) {
       setIsAnimating(true);
@@ -465,23 +507,52 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect }) => {
     }
   };
   
-  // Updated play song handler - now calls onSongSelect
   const handlePlaySong = (song: Song) => {
-    console.log('Playing:', song.title, 'by', song.artist);
-    // Call the onSongSelect prop function to open the player
     onSongSelect(song);
   };
   
-  // View artist handler
   const handleViewArtist = (artist: Artist) => {
-    console.log('Viewing artist:', artist.name);
+    onArtistSelect(artist);
   };
+
+  const handleAddToPlaylist = (songId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedTrackId(songId);
+    setShowAddToPlaylistModal(true);
+  };
+
+  if (isLoadingSongs || isLoadingArtists) {
+    return (
+      <>
+        <style>{contentStyles}</style>
+        <div className="main-content" style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          minHeight: '400px',
+          flexDirection: 'column',
+          gap: '20px'
+        }}>
+          <div style={{ 
+            width: '50px', 
+            height: '50px', 
+            border: '4px solid rgba(29, 185, 84, 0.1)',
+            borderTop: '4px solid #1db954',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }}></div>
+          <div style={{ fontSize: '16px', color: '#b3b3b3' }}>
+            Loading music from database...
+          </div>
+        </div>
+      </>
+    );
+  }
   
   return (
     <>
       <style>{contentStyles}</style>
       <div className="main-content">
-        {/* Trending Songs Section */}
         <section style={{ marginBottom: '40px' }}>
           <div className="section-header">
             <div className="section-title-wrapper">
@@ -494,7 +565,6 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect }) => {
                       key={i} 
                       className={`dot ${i === songPage ? 'active' : ''}`}
                       onClick={() => handleSongPageDirect(i)}
-                      style={{ cursor: 'pointer' }}
                     />
                   ))}
                 </div>
@@ -506,7 +576,6 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect }) => {
                   className="arrow-button"
                   onClick={handleSongPrevious}
                   disabled={songPage === 0}
-                  title="Previous"
                 >
                   <span className="arrow-icon">←</span>
                 </button>
@@ -514,7 +583,6 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect }) => {
                   className="arrow-button"
                   onClick={handleSongNext}
                   disabled={songPage === totalSongPages - 1}
-                  title="Next"
                 >
                   <span className="arrow-icon">→</span>
                 </button>
@@ -538,6 +606,13 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect }) => {
                   >
                     <div className="card-image-container">
                       <img src={song.cover} alt={song.title} />
+                      <button 
+                        className="add-to-playlist-btn"
+                        onClick={(e) => handleAddToPlaylist(song.id, e)}
+                        title="Add to playlist"
+                      >
+                        +
+                      </button>
                       <div className="play-button-overlay">
                         <span className="play-icon">▶</span>
                       </div>
@@ -554,7 +629,6 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect }) => {
           </div>
         </section>
 
-        {/* Popular Artists Section */}
         <section>
           <div className="section-header">
             <div className="section-title-wrapper">
@@ -567,7 +641,6 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect }) => {
                       key={i} 
                       className={`dot ${i === artistPage ? 'active' : ''}`}
                       onClick={() => handleArtistPageDirect(i)}
-                      style={{ cursor: 'pointer' }}
                     />
                   ))}
                 </div>
@@ -579,7 +652,6 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect }) => {
                   className="arrow-button"
                   onClick={handleArtistPrevious}
                   disabled={artistPage === 0}
-                  title="Previous"
                 >
                   <span className="arrow-icon">←</span>
                 </button>
@@ -587,7 +659,6 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect }) => {
                   className="arrow-button"
                   onClick={handleArtistNext}
                   disabled={artistPage === totalArtistPages - 1}
-                  title="Next"
                 >
                   <span className="arrow-icon">→</span>
                 </button>
@@ -627,6 +698,13 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect }) => {
           </div>
         </section>
       </div>
+
+      {showAddToPlaylistModal && selectedTrackId && (
+        <AddToPlaylistModal
+          trackId={selectedTrackId}
+          onClose={() => setShowAddToPlaylistModal(false)}
+        />
+      )}
     </>
   );
 };

@@ -287,10 +287,18 @@ const pageStyles = `
     margin: 4px 0;
   }
 `;
+interface UserData {
+  userId?: string;
+  displayName: string;
+  email?: string;
+  country?: string;
+  sex?: string;
+  language?: string;
 
+}
 interface LoginPageProps {
   onBackClick: () => void;
-  onLoginSuccess: (displayName: string) => void;
+  onLoginSuccess: (userData: UserData) => void;
   onRegisterClick?: () => void;
 }
 
@@ -352,11 +360,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess, onRe
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('loopifyUser', JSON.stringify(data.user));
         
+        
         if (rememberMe) {
           localStorage.setItem('rememberUser', 'true');
         }
 
-        onLoginSuccess(data.user.displayName);
+        onLoginSuccess(data.user);
       } else {
         setError(data.error || 'Invalid email or password');
       }
@@ -372,7 +381,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess, onRe
         };
         
         localStorage.setItem('loopifyUser', JSON.stringify(demoUser));
-        onLoginSuccess(demoUser.displayName);
+        onLoginSuccess(demoUser);
       } else {
         setError('Cannot connect to server. Please ensure the backend is running on port 5000.');
       }

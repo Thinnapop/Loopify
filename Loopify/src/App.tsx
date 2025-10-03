@@ -3,15 +3,20 @@ import Navbar from './components/Navbar';
 import LoginPage from './page/Login';
 import RegistPage from './page/Regist';
 import ProfilePage from './page/Profile';
+import ArtistPage from './page/Artist';
 import Sidebar from './components/SideBar';
 import MainContent from './components/content';
 import PlayTheSong from './page/playTheSong';
+import PlaylistDetail from './page/PlaylistDetail';
+import JoinPlaylistPage from './page/JoinPlaylist';
 
 interface UserData {
+  userId?: string;
   displayName: string;
   email?: string;
   country?: string;
   sex?: string;
+  language?: string;
 }
 
 interface Song {
@@ -21,6 +26,15 @@ interface Song {
   cover: string;
   duration?: string;
   album?: string;
+  audioUrl?: string;
+}
+
+interface Artist {
+  id: number;
+  name: string;
+  type: string;
+  avatar: string;
+  followers?: string;
 }
 
 function App() {
@@ -32,6 +46,9 @@ function App() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [currentPlayingSong, setCurrentPlayingSong] = useState<Song | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<number | null>(null);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
 
   // Check for saved user on component mount
   useEffect(() => {
@@ -46,9 +63,17 @@ function App() {
     }
   }, []);
 
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/invite/')) {
+      const code = path.split('/invite/')[1];
+      setInviteCode(code);
+      setCurrentPage('join-playlist');
+    }
+  }, []);
+
   // Handle successful login
-  const handleLoginSuccess = (displayName: string) => {
-    const userData = { displayName };
+  const handleLoginSuccess = (userData: UserData) => {
     setCurrentUser(userData);
     localStorage.setItem('loopifyUser', JSON.stringify(userData));
     setShowWelcomeMessage(true);
@@ -58,7 +83,11 @@ function App() {
       setShowWelcomeMessage(false);
     }, 3000);
   };
-
+  const handlePlaylistClick = (playlistId: number) => {
+    console.log('Clicked playlist ID:', playlistId); // Add this
+    setSelectedPlaylist(playlistId);
+    setCurrentPage('playlist');
+  };
   // Handle logout with loading animation
   const handleLogout = () => {
     setIsLoggingOut(true);
@@ -66,6 +95,7 @@ function App() {
     setTimeout(() => {
       setCurrentUser(null);
       localStorage.removeItem('loopifyUser');
+      localStorage.removeItem('authToken');
       setIsLoggingOut(false);
       setShowLogoutMessage(true);
       
@@ -77,8 +107,19 @@ function App() {
   };
 
   // Handle registration success
-  const handleRegistrationSuccess = () => {
-    setCurrentPage('login');
+  const handleRegistrationSuccess = (userData?: UserData) => {
+    if (userData) {
+      setCurrentUser(userData);
+      localStorage.setItem('loopifyUser', JSON.stringify(userData));
+      setShowWelcomeMessage(true);
+      setCurrentPage('home');
+      
+      setTimeout(() => {
+        setShowWelcomeMessage(false);
+      }, 3000);
+    } else {
+      setCurrentPage('login');
+    }
   };
 
   // Handle navigation to profile with loading
@@ -97,12 +138,18 @@ function App() {
     localStorage.setItem('loopifyUser', JSON.stringify(updatedUser));
   };
 
-  // Handle song selection with animation
+  // Handle song selection
   const handleSongSelect = (song: Song) => {
     setCurrentPlayingSong(song);
   };
 
-  // Handle closing the player with animation
+  // Handle artist selection
+  const handleArtistSelect = (artist: Artist) => {
+    setSelectedArtist(artist);
+    setCurrentPage('artist');
+  };
+
+  // Handle closing the player
   const handleClosePlayer = () => {
     setIsTransitioning(true);
     
@@ -112,7 +159,7 @@ function App() {
     }, 200);
   };
 
-  // All styles including messages, animations, and transitions
+  // All styles
   const appStyles = `
     * {
       margin: 0;
@@ -303,12 +350,11 @@ function App() {
       }
     }
   `;
-
+  
   const mainAppLayout = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#000' }}>
       <style>{appStyles}</style>
       
-      {/* Welcome Message */}
       {showWelcomeMessage && currentUser && (
         <div className="welcome-message">
           <span className="message-icon">🎵</span>
@@ -316,7 +362,6 @@ function App() {
         </div>
       )}
       
-      {/* Logout Success Message */}
       {showLogoutMessage && !isLoggingOut && (
         <div className="logout-success-message">
           <span className="message-icon">👋</span>
@@ -324,7 +369,6 @@ function App() {
         </div>
       )}
       
-      {/* Logout Loading Overlay */}
       {isLoggingOut && (
         <div className="logout-overlay">
           <div className="logout-modal">
@@ -334,7 +378,6 @@ function App() {
         </div>
       )}
       
-      {/* Profile Loading Overlay */}
       {isLoadingProfile && (
         <div className="profile-loading-overlay">
           <div className="profile-loading-modal">
@@ -354,11 +397,16 @@ function App() {
         isLoadingProfile={isLoadingProfile}
       />
       <div style={{ display: 'flex', flex: 1 }}>
-        <Sidebar /> 
-        <MainContent onSongSelect={handleSongSelect} />
+      <Sidebar 
+        currentUser={currentUser}
+        onPlaylistClick={handlePlaylistClick}
+      />
+        <MainContent 
+          onSongSelect={handleSongSelect}
+          onArtistSelect={handleArtistSelect}
+        />
       </div>
       
-      {/* Music Player Modal - Shows when a song is selected */}
       {currentPlayingSong && (
         <div className={`${isTransitioning ? 'player-exit' : 'player-enter'}`} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 3000 }}>
           <PlayTheSong 
@@ -370,7 +418,7 @@ function App() {
     </div>
   );
 
-  // Render different pages based on currentPage state
+  // Render pages based on currentPage state
   switch (currentPage) {
     case 'login':
       return (
@@ -397,6 +445,36 @@ function App() {
           onUpdateUser={updateUserData}
         />
       );
+      case 'join-playlist':
+  return inviteCode ? (
+    <JoinPlaylistPage
+      inviteCode={inviteCode}
+      onBackClick={() => {
+        setCurrentPage('home');
+        window.history.pushState({}, '', '/');
+      }}
+      currentUser={currentUser}
+    />
+  ) : mainAppLayout;
+      case 'playlist':
+  return selectedPlaylist ? (
+    <PlaylistDetail
+      playlistId={selectedPlaylist}
+      onBackClick={() => setCurrentPage('home')}
+      onSongSelect={handleSongSelect}
+    />
+  ) : mainAppLayout;
+    case 'artist':
+      return selectedArtist ? (
+        <ArtistPage
+          artist={selectedArtist}
+          onBackClick={() => setCurrentPage('home')}
+          onSongSelect={handleSongSelect}
+        />
+      ) : (
+        mainAppLayout
+      );
+      
     default:
       return mainAppLayout;
   }

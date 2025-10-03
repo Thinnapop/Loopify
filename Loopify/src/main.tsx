@@ -379,7 +379,25 @@ const MainContent: React.FC = () => {
   const [totalArtistPages, setTotalArtistPages] = useState(1);
   const [loading, setLoading] = useState({ songs: true, artists: true });
   const [errors, setErrors] = useState({ songs: '', artists: '' });
-
+  
+  // This should be INSIDE MainContent component
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      const songsResponse = await fetch('http://localhost:5001/api/songs/trending');
+      const songs = await songsResponse.json();
+      setAllTrendingSongs(songs);
+      
+      const artistsResponse = await fetch('http://localhost:5001/api/artists/popular');
+      const artists = await artistsResponse.json();
+      setAllPopularArtists(artists);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+  
+  fetchData();
+}, []);
   // Load songs data
   const loadSongs = async (page: number) => {
     setLoading(prev => ({ ...prev, songs: true }));
@@ -596,10 +614,10 @@ const MainContent: React.FC = () => {
 };
 
 export default MainContent;
-
 function setAllTrendingSongs(songs: any) {
   throw new Error('Function not implemented.');
 }
+
 function setAllPopularArtists(artists: any) {
   throw new Error('Function not implemented.');
 }

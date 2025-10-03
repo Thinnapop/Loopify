@@ -8,6 +8,7 @@ interface Song {
   cover: string;
   duration?: string;
   album?: string;
+  audioUrl?: string;
 }
 
 interface PlayTheSongProps {
@@ -16,74 +17,87 @@ interface PlayTheSongProps {
 }
 
 const PlayTheSong: React.FC<PlayTheSongProps> = ({ song, onClose }) => {
-  // Convert duration string to seconds
-  const durationToSeconds = (duration: string | undefined) => {
-    if (!duration) return 240; // Default 4 minutes
-    const [mins, secs] = duration.split(':').map(Number);
-    return mins * 60 + (secs || 0);
-  };
-
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration] = useState(durationToSeconds(song.duration));
+  const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(75);
   const [isLiked, setIsLiked] = useState(false);
-  const [showLyrics, setShowLyrics] = useState(true);
-  const [currentLyricIndex, setCurrentLyricIndex] = useState(0);
   const [repeat, setRepeat] = useState(false);
   const [shuffle, setShuffle] = useState(false);
-  
-  const lyricsRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showCorsMessage, setShowCorsMessage] = useState(false);
+  const [useSimulation, setUseSimulation] = useState(false);
 
-  // Mock lyrics data
-  const lyrics = [
-    { time: 0, text: "[Instrumental Intro]" },
-    { time: 10, text: "First line of the song..." },
-    { time: 20, text: "Second line continues here..." },
-    { time: 30, text: "The chorus begins now..." },
-    { time: 40, text: "Music flows through the air..." },
-    { time: 50, text: "[Musical Bridge]" },
-    { time: 60, text: "Back to the verse again..." },
-    { time: 70, text: "Building up the emotion..." },
-    { time: 80, text: "The final chorus starts..." },
-    { time: 90, text: "Ending with a powerful note..." },
-  ];
-
-  // Format time helper
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  // Parse duration string to seconds
+  const parseDuration = (durationStr?: string): number => {
+    if (!durationStr) return 180;
+    const [mins, secs] = durationStr.split(':').map(Number);
+    return (mins * 60) + (secs || 0);
   };
 
-  // Update current lyric based on time
+  // Initialize audio element
   useEffect(() => {
-    if (!showLyrics) return;
-    
-    const currentLyric = lyrics.findIndex((lyric, index) => {
-      const nextLyric = lyrics[index + 1];
-      return currentTime >= lyric.time && (!nextLyric || currentTime < nextLyric.time);
-    });
-    
-    if (currentLyric !== -1 && currentLyric !== currentLyricIndex) {
-      setCurrentLyricIndex(currentLyric);
-      if (lyricsRef.current) {
-        const lyricElement = lyricsRef.current.children[currentLyric] as HTMLElement;
-        if (lyricElement) {
-          lyricElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (song.audioUrl) {
+      audioRef.current = new Audio(song.audioUrl);
+      audioRef.current.volume = volume / 100;
+      
+      const handleError = () => {
+        console.log('CORS blocked - using simulated playback for demo');
+        setShowCorsMessage(true);
+        setUseSimulation(true);
+        setDuration(parseDuration(song.duration));
+        setIsLoading(false);
+      };
+      
+      const handleLoadedMetadata = () => {
+        if (audioRef.current) {
+          setDuration(audioRef.current.duration);
+          setIsLoading(false);
+          setUseSimulation(false);
         }
-      }
+      };
+      
+      const handleTimeUpdate = () => {
+        if (audioRef.current && !useSimulation) {
+          setCurrentTime(audioRef.current.currentTime);
+        }
+      };
+      
+      const handleEnded = () => {
+        if (repeat && audioRef.current) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.play();
+        } else {
+          setIsPlaying(false);
+          setCurrentTime(0);
+        }
+      };
+      
+      audioRef.current.addEventListener('error', handleError);
+      audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+      audioRef.current.addEventListener('timeupdate', handleTimeUpdate);
+      audioRef.current.addEventListener('ended', handleEnded);
+      
+      // Trigger error immediately since we know it will fail
+      setTimeout(handleError, 500);
+      
+      return () => {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.removeEventListener('error', handleError);
+          audioRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
+          audioRef.current.removeEventListener('timeupdate', handleTimeUpdate);
+          audioRef.current.removeEventListener('ended', handleEnded);
+          audioRef.current = null;
+        }
+      };
     }
-  }, [currentTime, showLyrics, currentLyricIndex]);
+  }, [song.audioUrl, repeat, song.duration]);
 
-  // Handle play/pause
-  const togglePlay = () => {
-    setIsPlaying(!isPlaying);
-  };
-
-  // Progress bar update simulation
+  // Simulated playback timer
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!isPlaying || !useSimulation) return;
     
     const interval = setInterval(() => {
       setCurrentTime(prev => {
@@ -100,15 +114,52 @@ const PlayTheSong: React.FC<PlayTheSongProps> = ({ song, onClose }) => {
     }, 1000);
     
     return () => clearInterval(interval);
-  }, [isPlaying, duration, repeat]);
+  }, [isPlaying, duration, repeat, useSimulation]);
 
+  // Handle play/pause
+  const togglePlay = () => {
+    if (isLoading) return;
+    
+    if (useSimulation) {
+      setIsPlaying(!isPlaying);
+    } else if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play().catch(() => {
+          setUseSimulation(true);
+          setIsPlaying(true);
+        });
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  // Handle progress change
   const handleProgressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = (Number(e.target.value) / 100) * duration;
     setCurrentTime(newTime);
+    if (audioRef.current && !useSimulation) {
+      audioRef.current.currentTime = newTime;
+    }
   };
 
+  // Handle volume change
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setVolume(Number(e.target.value));
+    const newVolume = Number(e.target.value);
+    setVolume(newVolume);
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume / 100;
+    }
+  };
+
+  // Format time helper
+  const formatTime = (seconds: number) => {
+    if (isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -136,7 +187,7 @@ const PlayTheSong: React.FC<PlayTheSongProps> = ({ song, onClose }) => {
           </div>
           
           <div className="player-main">
-            <div className="player-left">
+            <div className="player-center">
               <div className="album-art-container">
                 <img 
                   src={song.cover} 
@@ -149,32 +200,9 @@ const PlayTheSong: React.FC<PlayTheSongProps> = ({ song, onClose }) => {
               <div className="song-info">
                 <h1 className="song-title">{song.title}</h1>
                 <p className="song-artist">{song.artist}</p>
-                <p className="song-meta">{song.album || 'Unknown Album'}</p>
-              </div>
-            </div>
-            
-            <div className="player-right">
-              <div className="lyrics-container">
-                <div className="lyrics-header">
-                  <h3>Lyrics</h3>
-                  <button 
-                    className="lyrics-toggle"
-                    onClick={() => setShowLyrics(!showLyrics)}
-                  >
-                    {showLyrics ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-                {showLyrics && (
-                  <div className="lyrics-scroll" ref={lyricsRef}>
-                    {lyrics.map((lyric, index) => (
-                      <p 
-                        key={index}
-                        className={`lyric-line ${index === currentLyricIndex ? 'active' : ''} ${index < currentLyricIndex ? 'past' : ''}`}
-                      >
-                        {lyric.text}
-                      </p>
-                    ))}
-                  </div>
+                <p className="song-meta">{song.album || 'Single'}</p>
+                {showCorsMessage && (
+                  <p className="demo-mode-text">Demo Mode - Simulated Playback</p>
                 )}
               </div>
             </div>
@@ -187,8 +215,9 @@ const PlayTheSong: React.FC<PlayTheSongProps> = ({ song, onClose }) => {
               className="progress-bar"
               min="0"
               max="100"
-              value={(currentTime / duration) * 100}
+              value={duration > 0 ? (currentTime / duration) * 100 : 0}
               onChange={handleProgressChange}
+              disabled={isLoading}
             />
             <span className="time-label">{formatTime(duration)}</span>
           </div>
@@ -215,13 +244,13 @@ const PlayTheSong: React.FC<PlayTheSongProps> = ({ song, onClose }) => {
                 </svg>
               </button>
               
-              <button className="control-btn">
+              <button className="control-btn" disabled={isLoading}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
                 </svg>
               </button>
               
-              <button className="play-btn" onClick={togglePlay}>
+              <button className="play-btn" onClick={togglePlay} disabled={isLoading}>
                 {isPlaying ? (
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
@@ -233,7 +262,7 @@ const PlayTheSong: React.FC<PlayTheSongProps> = ({ song, onClose }) => {
                 )}
               </button>
               
-              <button className="control-btn">
+              <button className="control-btn" disabled={isLoading}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
                 </svg>
@@ -280,6 +309,12 @@ const playerStyles = `
     z-index: 3000;
     display: flex;
     flex-direction: column;
+  }
+    .demo-mode-text {
+    font-size: 13px;
+    color: #ff9800;
+    margin-top: 8px;
+    font-weight: 500;
   }
   
   .player-background {
@@ -338,22 +373,24 @@ const playerStyles = `
   .player-main {
     flex: 1;
     display: flex;
-    gap: 40px;
+    justify-content: center;
+    align-items: center;
     overflow: hidden;
   }
   
-  .player-left {
-    flex: 1;
+  .player-center {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 30px;
+    gap: 40px;
+    max-width: 600px;
+    width: 100%;
   }
   
   .album-art-container {
     position: relative;
-    width: 300px;
-    height: 300px;
+    width: 400px;
+    height: 400px;
   }
   
   .album-art {
@@ -361,6 +398,7 @@ const playerStyles = `
     height: 100%;
     border-radius: 8px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    object-fit: cover;
   }
   
   .album-art.spinning {
@@ -378,8 +416,8 @@ const playerStyles = `
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 60px;
-    height: 60px;
+    width: 80px;
+    height: 80px;
     background: #121212;
     border-radius: 50%;
     opacity: 0;
@@ -392,88 +430,37 @@ const playerStyles = `
   
   .song-info {
     text-align: center;
+    width: 100%;
   }
   
   .song-title {
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 700;
     color: white;
-    margin: 0 0 8px 0;
+    margin: 0 0 12px 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
   
   .song-artist {
-    font-size: 20px;
+    font-size: 22px;
     color: #b3b3b3;
-    margin: 0 0 4px 0;
+    margin: 0 0 8px 0;
   }
   
   .song-meta {
+    font-size: 16px;
+    color: #666;
+    margin: 0;
+  }
+  
+  .loading-text {
     font-size: 14px;
-    color: #666;
-    margin: 0;
-  }
-  
-  .player-right {
-    flex: 1;
-    max-width: 500px;
-  }
-  
-  .lyrics-container {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .lyrics-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-  
-  .lyrics-header h3 {
-    margin: 0;
-    color: white;
-    font-size: 20px;
-  }
-  
-  .lyrics-toggle {
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: white;
-    padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  
-  .lyrics-scroll {
-    flex: 1;
-    overflow-y: auto;
-    padding-right: 10px;
-  }
-  
-  .lyric-line {
-    font-size: 18px;
-    line-height: 2;
-    color: #666;
-    margin: 0;
-    padding: 8px 0;
-    transition: all 0.3s;
-    cursor: pointer;
-  }
-  
-  .lyric-line.active {
-    color: white;
-    font-size: 22px;
-    font-weight: 600;
-  }
-  
-  .lyric-line.past {
-    color: #999;
-  }
-  
-  .lyric-line:hover {
-    color: #b3b3b3;
+    color: #1db954;
+    margin-top: 8px;
   }
   
   .progress-section {
@@ -487,6 +474,7 @@ const playerStyles = `
     color: #b3b3b3;
     font-size: 12px;
     min-width: 40px;
+    text-align: center;
   }
   
   .progress-bar {
@@ -497,6 +485,12 @@ const playerStyles = `
     background: rgba(255, 255, 255, 0.1);
     border-radius: 2px;
     outline: none;
+    cursor: pointer;
+  }
+  
+  .progress-bar:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
   }
   
   .progress-bar::-webkit-slider-thumb {
@@ -551,8 +545,13 @@ const playerStyles = `
     transition: all 0.2s;
   }
   
-  .control-btn:hover {
+  .control-btn:hover:not(:disabled) {
     color: white;
+  }
+  
+  .control-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
   }
   
   .control-btn.active {
@@ -577,12 +576,17 @@ const playerStyles = `
     color: black;
   }
   
-  .play-btn:hover {
+  .play-btn:hover:not(:disabled) {
     transform: scale(1.05);
   }
   
-  .play-btn:active {
+  .play-btn:active:not(:disabled) {
     transform: scale(0.95);
+  }
+  
+  .play-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
   
   .volume-slider {
@@ -593,6 +597,7 @@ const playerStyles = `
     background: rgba(255, 255, 255, 0.1);
     border-radius: 2px;
     outline: none;
+    cursor: pointer;
   }
   
   .volume-slider::-webkit-slider-thumb {
@@ -605,41 +610,22 @@ const playerStyles = `
     cursor: pointer;
   }
   
-  .lyrics-scroll::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  .lyrics-scroll::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 3px;
-  }
-  
-  .lyrics-scroll::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
-  }
-  
-  .lyrics-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
-  }
-  
   @media (max-width: 768px) {
-    .player-main {
-      flex-direction: column;
-    }
-    
     .album-art-container {
-      width: 200px;
-      height: 200px;
+      width: 280px;
+      height: 280px;
     }
     
     .song-title {
-      font-size: 22px;
+      font-size: 24px;
     }
     
-    .player-right {
-      max-width: 100%;
-      height: 300px;
+    .song-artist {
+      font-size: 18px;
+    }
+    
+    .controls-center {
+      gap: 12px;
     }
   }
 `;

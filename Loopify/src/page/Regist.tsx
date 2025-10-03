@@ -379,12 +379,11 @@ export default function RegistPage({ onBackClick = () => {}, onRegistrationSucce
     if (!validateForm()) {
       return;
     }
-
+  
     setIsLoading(true);
     setError('');
-
+    
     try {
-      // Call backend API to register user
       const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: {
@@ -395,47 +394,32 @@ export default function RegistPage({ onBackClick = () => {}, onRegistrationSucce
           email: formData.email,
           password: formData.password,
           country: formData.country,
-          language: formData.language
-          // Note: 'sex' field is not in the backend schema, so we're not sending it
+          language: formData.language,
+          sex: formData.sex  // Include sex field
         })
       });
-
+  
       const data = await response.json();
-
+  
       if (response.ok) {
-        setSuccess('Account created successfully! Redirecting to login...');
+        setSuccess('Account created successfully!');
         
-        // Store success message for login page
-        localStorage.setItem('registrationSuccess', 'Registration successful! Please login with your credentials.');
+        // Store auth token AND full user data
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('loopifyUser', JSON.stringify(data.user));
         
-        // Store user data temporarily for login page
-        localStorage.setItem('registeredEmail', formData.email);
+        console.log('User registered with data:', data.user);
         
-        console.log('User registered successfully:', data);
-
-        // Redirect to login page after 2 seconds
+        // Call onRegistrationSuccess immediately to trigger login
         setTimeout(() => {
           onRegistrationSuccess();
-        }, 2000);
+        }, 1500);
       } else {
         setError(data.error || 'Registration failed. Please try again.');
       }
     } catch (error) {
       console.error('Registration error:', error);
-      
-      // Show more helpful error message
-      setError('Cannot connect to server. Please make sure the backend server is running on http://localhost:5000');
-      
-      // For demo purposes, still allow navigation
-      setTimeout(() => {
-        localStorage.setItem('demoUser', JSON.stringify({
-          displayName: formData.displayName,
-          email: formData.email,
-          country: formData.country
-        }));
-        localStorage.setItem('registrationSuccess', 'Demo account created! (Server offline - demo mode)');
-        onRegistrationSuccess();
-      }, 2000);
+      setError('Cannot connect to server. Please make sure the backend server is running on http://localhost:5001');
     } finally {
       setIsLoading(false);
     }
