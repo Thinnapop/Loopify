@@ -29,45 +29,43 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artist, onBackClick, onSongSele
   const [isLoading, setIsLoading] = useState(true);
   const [hoveredSong, setHoveredSong] = useState<number | null>(null);
 
+  // This useEffect is replaced by the one below that uses artist ID
   useEffect(() => {
     const fetchArtistSongs = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`${API_BASE_URL}/api/jamendo/tracks?limit=50`);
-        const allTracks = await response.json();
-        
-        const filteredSongs = allTracks
-          .filter((track: Song) => track.artist.toLowerCase() === artist.name.toLowerCase())
-          .map((track: Song) => ({
-            ...track,
-            audioUrl: `${API_BASE_URL}/api/stream/${track.id}`
-          }));
-        
-        setArtistSongs(filteredSongs);
+        // Jamendo API requires a client ID - get yours from https://developer.jamendo.com/
+        const JAMENDO_CLIENT_ID = import.meta.env.VITE_JAMENDO_CLIENT_ID || 'your_jamendo_client_id_here';
+        const response = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&artist_id=${artist.id}&limit=50&include=audio`);
+
+        if (!response.ok) {
+          throw new Error(`Jamendo API error: ${response.status}`);
+        }
+
+        const jamendoData = await response.json();
+
+        // Transform Jamendo data to match our Song interface
+        const transformedTracks = jamendoData.results?.map((track: any) => ({
+          id: track.id,
+          title: track.name,
+          artist: track.artist_name,
+          cover: track.album_image || track.image,
+          duration: track.duration ? `${Math.floor(track.duration / 60)}:${(track.duration % 60).toString().padStart(2, '0')}` : undefined,
+          album: track.album_name,
+          audioUrl: track.audio || '#'
+        })) || [];
+
+        setArtistSongs(transformedTracks);
       } catch (error) {
         console.error('Failed to fetch artist songs:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    
-    fetchArtistSongs();
-  }, [artist.name]);
-  useEffect(() => {
-    const fetchArtistSongs = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch(`${API_BASE_URL}/api/jamendo/artists/${artist.id}/tracks`);
-        const tracks = await response.json();
-        setArtistSongs(tracks);
-      } catch (error) {
-        console.error('Failed to fetch artist songs:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchArtistSongs();
+
+    if (artist.id) {
+      fetchArtistSongs();
+    }
   }, [artist.id]);
   return (
     <>

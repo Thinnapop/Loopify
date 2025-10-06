@@ -373,13 +373,26 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
     const fetchTracks = async () => {
       try {
         setIsLoadingSongs(true);
-        const response = await fetch(`${API_BASE_URL}/api/jamendo/tracks?limit=50`);
-        const data = await response.json();
-        
-        const tracksWithProxy = data.map((track: Song) => ({
-          ...track,
-          audioUrl: `${API_BASE_URL}/api/stream/${track.id}`
-        }));
+        // Jamendo API requires a client ID - get yours from https://developer.jamendo.com/
+        const JAMENDO_CLIENT_ID = import.meta.env.VITE_JAMENDO_CLIENT_ID || 'your_jamendo_client_id_here';
+        const response = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=50&include=audio`);
+
+        if (!response.ok) {
+          throw new Error(`Jamendo API error: ${response.status}`);
+        }
+
+        const jamendoData = await response.json();
+
+        // Transform Jamendo data to match our Song interface
+        const tracksWithProxy = jamendoData.results?.map((track: any) => ({
+          id: track.id,
+          title: track.name,
+          artist: track.artist_name,
+          cover: track.album_image || track.image,
+          duration: track.duration ? `${Math.floor(track.duration / 60)}:${(track.duration % 60).toString().padStart(2, '0')}` : undefined,
+          album: track.album_name,
+          audioUrl: track.audio || '#'
+        })) || [];
         
         setAllTrendingSongs(tracksWithProxy);
       } catch (error) {
@@ -396,9 +409,25 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
     const fetchArtists = async () => {
       try {
         setIsLoadingArtists(true);
-        const response = await fetch(`${API_BASE_URL}/api/jamendo/artists?limit=20`);
-        const data = await response.json();
-        setAllPopularArtists(data);
+        // Jamendo API requires a client ID - get yours from https://developer.jamendo.com/
+        const JAMENDO_CLIENT_ID = import.meta.env.VITE_JAMENDO_CLIENT_ID || 'your_jamendo_client_id_here';
+        const response = await fetch(`https://api.jamendo.com/v3.0/artists/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=20`);
+
+        if (!response.ok) {
+          throw new Error(`Jamendo API error: ${response.status}`);
+        }
+
+        const jamendoData = await response.json();
+
+        // Transform Jamendo data to match our Artist interface
+        const transformedArtists = jamendoData.results?.map((artist: any) => ({
+          id: artist.id,
+          name: artist.name,
+          type: artist.type || 'Artist',
+          avatar: artist.image || artist.avatar,
+          followers: artist.followers ? `${artist.followers} followers` : undefined
+        })) || [];
+        setAllPopularArtists(transformedArtists);
       } catch (error) {
         console.error('Failed to fetch artists:', error);
       } finally {
