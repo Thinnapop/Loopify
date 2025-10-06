@@ -378,7 +378,7 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
 
         console.log('Fetching tracks with Client ID:', JAMENDO_CLIENT_ID);
 
-        const response = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=50&include=audio`);
+        const response = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=200&include=audio&boost=popularity_total`);
 
         console.log('Jamendo API response status:', response.status);
 
@@ -387,20 +387,22 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
         }
 
         const jamendoData = await response.json();
-        console.log('Jamendo tracks data:', jamendoData);
+        console.log('Jamendo tracks data (full):', jamendoData);
+        console.log('Jamendo tracks results:', jamendoData.results);
 
         // Transform Jamendo data to match our Song interface
         const tracksWithProxy = jamendoData.results?.map((track: any) => ({
           id: track.id,
           title: track.name,
           artist: track.artist_name,
-          cover: track.album_image || track.image || '/placeholder-cover.jpg',
+          cover: track.album_image || track.image || 'https://picsum.photos/300/300?random=' + track.id,
           duration: track.duration ? `${Math.floor(track.duration / 60)}:${(track.duration % 60).toString().padStart(2, '0')}` : undefined,
           album: track.album_name,
           audioUrl: track.audio || '#'
         })) || [];
 
         console.log('Transformed tracks:', tracksWithProxy.length);
+        console.log('Sample track:', tracksWithProxy[0]);
         
         setAllTrendingSongs(tracksWithProxy);
       } catch (error) {
@@ -472,7 +474,7 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
 
         console.log('Fetching artists with Client ID:', JAMENDO_CLIENT_ID);
 
-        const response = await fetch(`https://api.jamendo.com/v3.0/artists/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=20`);
+        const response = await fetch(`https://api.jamendo.com/v3.0/artists/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=143&order=popularity_total`);
 
         console.log('Jamendo Artists API response status:', response.status);
 
@@ -488,7 +490,7 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
           id: artist.id,
           name: artist.name,
           type: artist.type || 'Artist',
-          avatar: artist.image || artist.avatar || '/placeholder-avatar.jpg',
+          avatar: artist.image || artist.avatar || `https://picsum.photos/200/200?random=${artist.id}`,
           followers: artist.followers ? `${artist.followers} followers` : undefined
         })) || [];
 

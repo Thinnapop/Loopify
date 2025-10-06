@@ -35,25 +35,33 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artist, onBackClick, onSongSele
       try {
         setIsLoading(true);
         // Jamendo API requires a client ID - get yours from https://developer.jamendo.com/
-        const JAMENDO_CLIENT_ID = import.meta.env.VITE_JAMENDO_CLIENT_ID || 'your_jamendo_client_id_here';
-        const response = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&artist_id=${artist.id}&limit=50&include=audio`);
+        const JAMENDO_CLIENT_ID = import.meta.env.VITE_JAMENDO_CLIENT_ID || 'aba8b95b';
+
+        console.log('Fetching artist tracks for artist ID:', artist.id);
+
+        const response = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&artist_id=${artist.id}&limit=50&include=audio&boost=popularity_total`);
+
+        console.log('Artist tracks API response status:', response.status);
 
         if (!response.ok) {
           throw new Error(`Jamendo API error: ${response.status}`);
         }
 
         const jamendoData = await response.json();
+        console.log('Artist tracks data:', jamendoData);
 
         // Transform Jamendo data to match our Song interface
         const transformedTracks = jamendoData.results?.map((track: any) => ({
           id: track.id,
           title: track.name,
           artist: track.artist_name,
-          cover: track.album_image || track.image,
+          cover: track.album_image || track.image || `https://picsum.photos/300/300?random=${track.id}`,
           duration: track.duration ? `${Math.floor(track.duration / 60)}:${(track.duration % 60).toString().padStart(2, '0')}` : undefined,
           album: track.album_name,
           audioUrl: track.audio || '#'
         })) || [];
+
+        console.log('Transformed artist tracks:', transformedTracks.length);
 
         setArtistSongs(transformedTracks);
       } catch (error) {
