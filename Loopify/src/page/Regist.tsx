@@ -396,21 +396,21 @@ export default function RegistPage({ onBackClick = () => {}, onRegistrationSucce
           password: formData.password,
           country: formData.country,
           language: formData.language,
-          sex: formData.sex  // Include sex field
+          sex: formData.sex
         })
       });
-  
+
       const data = await response.json();
-  
+
       if (response.ok) {
         setSuccess('Account created successfully!');
-        
+
         // Store auth token AND full user data
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('loopifyUser', JSON.stringify(data.user));
-        
+
         console.log('User registered with data:', data.user);
-        
+
         // Call onRegistrationSuccess immediately to trigger login
         setTimeout(() => {
           onRegistrationSuccess();
@@ -420,7 +420,7 @@ export default function RegistPage({ onBackClick = () => {}, onRegistrationSucce
       }
     } catch (error) {
       console.error('Registration error:', error);
-      setError('Cannot connect to server. Please ensure the backend is running on port 5001.');
+      setError('Cannot connect to backend server. Please deploy your backend server first.');
     } finally {
       setIsLoading(false);
     }

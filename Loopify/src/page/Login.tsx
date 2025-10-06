@@ -342,7 +342,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess, onRe
     setIsLoading(true);
 
     try {
-      // First try real backend API
+      // Try to connect to your deployed backend
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -360,8 +360,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess, onRe
         // Store auth token
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('loopifyUser', JSON.stringify(data.user));
-        
-        
+
         if (rememberMe) {
           localStorage.setItem('rememberUser', 'true');
         }
@@ -372,20 +371,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess, onRe
       }
     } catch (error) {
       console.error('Login error:', error);
-      
-      // Fallback to demo mode if backend is not running
-      if (email === 'demo@loopify.com' && password === 'demo123') {
-        const demoUser = {
-          userId: 'demo_user',
-          displayName: 'Demo User',
-          email: 'demo@loopify.com'
-        };
-        
-        localStorage.setItem('loopifyUser', JSON.stringify(demoUser));
-        onLoginSuccess(demoUser);
-      } else {
-        setError('Cannot connect to server. Please ensure the backend is running on port 5001.');
-      }
+      setError('Cannot connect to backend server. Please deploy your backend server first.');
     } finally {
       setIsLoading(false);
     }

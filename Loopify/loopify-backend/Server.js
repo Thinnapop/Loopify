@@ -10,7 +10,13 @@ const app = express();
 
 // CORS configuration - MUST BE FIRST
 const corsOptions = {
-  origin: ['http://localhost:5175', 'http://localhost:5173', 'http://127.0.0.1:5175'],
+  origin: [
+    'http://localhost:5175',
+    'http://localhost:5173',
+    'http://127.0.0.1:5175',
+    'https://loopify-g41n.onrender.com',  // Your deployed frontend
+    process.env.FRONTEND_URL  // Production frontend URL
+  ].filter(Boolean),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
