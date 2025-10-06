@@ -4,20 +4,27 @@ const { open } = require('sqlite');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
 
-// CORS configuration
+// Environment-aware base URL
+const BASE_URL = process.env.BASE_URL || 'http://localhost:5001';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5177';
+
+// CORS configuration - production ready
 const corsOptions = {
-  origin: [
-    'http://localhost:5175', 
-    'http://localhost:5173', 
-    'http://localhost:5176',
-    'http://localhost:5177',
-    'http://127.0.0.1:5175',
-    'http://127.0.0.1:5177'
-  ],
+  origin: process.env.NODE_ENV === 'production' 
+    ? [process.env.FRONTEND_URL, process.env.PRODUCTION_URL].filter(Boolean)
+    : [
+        'http://localhost:5175', 
+        'http://localhost:5173', 
+        'http://localhost:5176',
+        'http://localhost:5177',
+        'http://127.0.0.1:5175',
+        'http://127.0.0.1:5177'
+      ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -26,6 +33,9 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Serve static files from React build (PRODUCTION)
+app.use(express.static(path.join(__dirname, '../dist')));
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 const JAMENDO_CLIENT_ID = 'aba8b95b';
@@ -43,7 +53,7 @@ function formatDuration(seconds) {
 // Initialize database
 (async () => {
   db = await open({
-    filename: './loopify.db',
+    filename: path.join(__dirname, 'loopify.db'),
     driver: sqlite3.Database
   });
 
@@ -545,7 +555,7 @@ app.get('/api/jamendo/tracks', async (req, res) => {
       cover: track.cover || 'https://via.placeholder.com/300',
       duration: formatDuration(track.DurationMs / 1000),
       album: track.album,
-      audioUrl: `http://localhost:5001/api/stream/${track.id}`,
+      audioUrl: `${BASE_URL}/api/stream/${track.id}`,
       genre: track.genre
     }));
     
@@ -613,7 +623,7 @@ app.get('/api/jamendo/artists/:artistId/tracks', async (req, res) => {
       cover: track.cover || 'https://via.placeholder.com/300',
       duration: formatDuration(track.DurationMs / 1000),
       album: track.album,
-      audioUrl: `http://localhost:5001/api/stream/${track.id}`,
+      audioUrl: `${BASE_URL}/api/stream/${track.id}`,
       genre: track.genre
     }));
     
@@ -655,7 +665,7 @@ app.get('/api/jamendo/tracks/:id', async (req, res) => {
       durationSeconds: track.DurationMs / 1000,
       duration: formatDuration(track.DurationMs / 1000),
       album: track.album,
-      audioUrl: `http://localhost:5001/api/stream/${track.id}`,
+      audioUrl: `${BASE_URL}/api/stream/${track.id}`,
       genre: track.genre,
       releaseDate: track.releaseDate
     });
@@ -725,9 +735,9 @@ app.get('/api/stream/:trackId', async (req, res) => {
     }
   }
 });
+
 // ==================== PLAYLIST ENDPOINTS ====================
 
-// Create new playlist
 app.post('/api/playlists/create', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -773,7 +783,6 @@ app.post('/api/playlists/create', async (req, res) => {
   }
 });
 
-// Get user's playlists
 app.get('/api/playlists', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -809,7 +818,6 @@ app.get('/api/playlists', async (req, res) => {
   }
 });
 
-// Get single playlist with tracks
 app.get('/api/playlists/:playlistId', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -863,7 +871,7 @@ app.get('/api/playlists/:playlistId', async (req, res) => {
       cover: track.cover || 'https://via.placeholder.com/300',
       duration: formatDuration(track.DurationMs / 1000),
       album: track.album,
-      audioUrl: `http://localhost:5001/api/stream/${track.id}`
+      audioUrl: `${BASE_URL}/api/stream/${track.id}`
     }));
     
     res.json({ ...playlist, tracks: formattedTracks });
@@ -873,7 +881,6 @@ app.get('/api/playlists/:playlistId', async (req, res) => {
   }
 });
 
-// Add track to playlist
 app.post('/api/playlists/:playlistId/tracks', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -932,7 +939,6 @@ app.post('/api/playlists/:playlistId/tracks', async (req, res) => {
   }
 });
 
-// Delete track from playlist
 app.delete('/api/playlists/:playlistId/tracks/:trackId', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -968,7 +974,6 @@ app.delete('/api/playlists/:playlistId/tracks/:trackId', async (req, res) => {
   }
 });
 
-// Delete entire playlist
 app.delete('/api/playlists/:playlistId', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -1006,26 +1011,6 @@ app.delete('/api/playlists/:playlistId', async (req, res) => {
   }
 });
 
-// ==================== TEST ENDPOINT ====================
-
-app.get('/api/test/db', async (req, res) => {
-  try {
-    const users = await db.get('SELECT COUNT(*) as count FROM Users');
-    const tracks = await db.get('SELECT COUNT(*) as count FROM Track');
-    const artists = await db.get('SELECT COUNT(*) as count FROM Artist');
-    
-    res.json({ 
-      message: 'Database connection successful', 
-      userCount: users.count,
-      trackCount: tracks.count,
-      artistCount: artists.count,
-      database: 'SQLite (loopify.db)'
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Database error', details: error.message });
-  }
-});
-// Update playlist details
 app.put('/api/playlists/:playlistId', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -1062,8 +1047,7 @@ app.put('/api/playlists/:playlistId', async (req, res) => {
     res.status(500).json({ error: 'Failed to update playlist' });
   }
 });
-// Generate invite code for playlist
-// Generate invite code for playlist
+
 app.post('/api/playlists/:playlistId/invite', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -1086,17 +1070,16 @@ app.post('/api/playlists/:playlistId/invite', async (req, res) => {
       return res.status(403).json({ error: 'No permission to invite' });
     }
     
-    // Generate code with role embedded
     const randomStr = Math.random().toString(36).substring(2, 10);
     const inviteData = `${playlistId}-${randomStr}-${role || 'Viewer'}`;
     const inviteCode = Buffer.from(inviteData).toString('base64');
     
-    console.log(`Invite code generated for playlist ${playlistId} with role ${role}`);  // ✅ CORRECT - move it here!
+    console.log(`Invite code generated for playlist ${playlistId} with role ${role}`);
     
     res.json({ 
       success: true, 
       inviteCode,
-      inviteUrl: `http://localhost:5177/invite/${inviteCode}`,
+      inviteUrl: `${FRONTEND_URL}/invite/${inviteCode}`,
       role: role || 'Viewer'
     });
   } catch (error) {
@@ -1105,7 +1088,6 @@ app.post('/api/playlists/:playlistId/invite', async (req, res) => {
   }
 });
 
-// Join playlist via invite code
 app.post('/api/playlists/join/:inviteCode', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -1118,23 +1100,20 @@ app.post('/api/playlists/join/:inviteCode', async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const { inviteCode } = req.params;
     
-    // Decode invite code to get playlist ID and role
     const decodedCode = Buffer.from(inviteCode, 'base64').toString('utf-8');
     const parts = decodedCode.split('-');
     const playlistId = parseInt(parts[0]);
-    const roleFromCode = parts[2] || 'Viewer'; // Role is the third part
+    const roleFromCode = parts[2] || 'Viewer';
     
     if (!playlistId || isNaN(playlistId)) {
       return res.status(400).json({ error: 'Invalid invite code' });
     }
     
-    // Check if playlist exists
     const playlist = await db.get('SELECT * FROM Playlist WHERE PlaylistID = ?', [playlistId]);
     if (!playlist) {
       return res.status(404).json({ error: 'Playlist not found' });
     }
     
-    // Check if already a member
     const existingMember = await db.get(
       `SELECT * FROM PlaylistMember WHERE PlaylistID = ? AND UserID = ?`,
       [playlistId, decoded.userId]
@@ -1144,7 +1123,6 @@ app.post('/api/playlists/join/:inviteCode', async (req, res) => {
       return res.status(400).json({ error: 'You are already a member of this playlist' });
     }
     
-    // Add user with role from invite code
     await db.run(
       `INSERT INTO PlaylistMember (PlaylistID, UserID, Role) VALUES (?, ?, ?)`,
       [playlistId, decoded.userId, roleFromCode]
@@ -1164,7 +1142,6 @@ app.post('/api/playlists/join/:inviteCode', async (req, res) => {
   }
 });
 
-// Get playlist members
 app.get('/api/playlists/:playlistId/members', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -1177,7 +1154,6 @@ app.get('/api/playlists/:playlistId/members', async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const { playlistId } = req.params;
     
-    // Check if user has access to playlist
     const member = await db.get(
       `SELECT Role FROM PlaylistMember WHERE PlaylistID = ? AND UserID = ?`,
       [playlistId, decoded.userId]
@@ -1187,7 +1163,6 @@ app.get('/api/playlists/:playlistId/members', async (req, res) => {
       return res.status(403).json({ error: 'No access to this playlist' });
     }
     
-    // Get all members
     const members = await db.all(`
       SELECT 
         u.UserID as userId,
@@ -1214,7 +1189,6 @@ app.get('/api/playlists/:playlistId/members', async (req, res) => {
   }
 });
 
-// Update member role (Owner only)
 app.put('/api/playlists/:playlistId/members/:userId/role', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -1228,7 +1202,6 @@ app.put('/api/playlists/:playlistId/members/:userId/role', async (req, res) => {
     const { playlistId, userId } = req.params;
     const { role } = req.body;
     
-    // Check if requesting user is owner
     const member = await db.get(
       `SELECT Role FROM PlaylistMember WHERE PlaylistID = ? AND UserID = ?`,
       [playlistId, decoded.userId]
@@ -1238,7 +1211,6 @@ app.put('/api/playlists/:playlistId/members/:userId/role', async (req, res) => {
       return res.status(403).json({ error: 'Only owner can change roles' });
     }
     
-    // Cannot change owner role
     const targetMember = await db.get(
       `SELECT Role FROM PlaylistMember WHERE PlaylistID = ? AND UserID = ?`,
       [playlistId, userId]
@@ -1260,7 +1232,6 @@ app.put('/api/playlists/:playlistId/members/:userId/role', async (req, res) => {
   }
 });
 
-// Remove member from playlist (Owner only)
 app.delete('/api/playlists/:playlistId/members/:userId', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -1273,7 +1244,6 @@ app.delete('/api/playlists/:playlistId/members/:userId', async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const { playlistId, userId } = req.params;
     
-    // Check if requesting user is owner
     const member = await db.get(
       `SELECT Role FROM PlaylistMember WHERE PlaylistID = ? AND UserID = ?`,
       [playlistId, decoded.userId]
@@ -1283,7 +1253,6 @@ app.delete('/api/playlists/:playlistId/members/:userId', async (req, res) => {
       return res.status(403).json({ error: 'Only owner can remove members' });
     }
     
-    // Cannot remove owner
     const targetMember = await db.get(
       `SELECT Role FROM PlaylistMember WHERE PlaylistID = ? AND UserID = ?`,
       [playlistId, userId]
@@ -1305,20 +1274,50 @@ app.delete('/api/playlists/:playlistId/members/:userId', async (req, res) => {
   }
 });
 
+// ==================== TEST ENDPOINT ====================
+
+app.get('/api/test/db', async (req, res) => {
+  try {
+    const users = await db.get('SELECT COUNT(*) as count FROM Users');
+    const tracks = await db.get('SELECT COUNT(*) as count FROM Track');
+    const artists = await db.get('SELECT COUNT(*) as count FROM Artist');
+    
+    res.json({ 
+      message: 'Database connection successful', 
+      userCount: users.count,
+      trackCount: tracks.count,
+      artistCount: artists.count,
+      database: 'SQLite (loopify.db)'
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Database error', details: error.message });
+  }
+});
+
+// ==================== CATCH-ALL ROUTE FOR REACT ROUTER ====================
+// This MUST be the last route - it serves the React app for any non-API routes
+// Catch-all route - must be LAST
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
 // ==================== START SERVER ====================
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`
-Loopify Server Running!
-URL: http://localhost:${PORT}
-Database: SQLite (loopify.db)
+🎵 Loopify Server Running!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 URL: ${BASE_URL}
+📂 Database: SQLite (loopify.db)
+🌍 Environment: ${process.env.NODE_ENV || 'development'}
 
-Music endpoints (from DATABASE):
-   GET  http://localhost:${PORT}/api/jamendo/tracks
-   GET  http://localhost:${PORT}/api/jamendo/artists
-   GET  http://localhost:${PORT}/api/jamendo/artists/:id/tracks
+Music API Endpoints:
+   GET  ${BASE_URL}/api/jamendo/tracks
+   GET  ${BASE_URL}/api/jamendo/artists
+   GET  ${BASE_URL}/api/jamendo/artists/:id/tracks
 
-Database auto-populates on first run!
+Frontend: Serving React app from /dist
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   `);
 });
