@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AddToPlaylistModal from './AddToPlaylistModal';
+import { API_BASE_URL } from '../../config';
 
 const contentStyles = `
   .main-content {
@@ -372,12 +373,12 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
     const fetchTracks = async () => {
       try {
         setIsLoadingSongs(true);
-        const response = await fetch('http://localhost:5001/api/jamendo/tracks?limit=50');
+        const response = await fetch(`${API_BASE_URL}/api/jamendo/tracks?limit=50`);
         const data = await response.json();
         
         const tracksWithProxy = data.map((track: Song) => ({
           ...track,
-          audioUrl: `http://localhost:5001/api/stream/${track.id}`
+          audioUrl: `${API_BASE_URL}/api/stream/${track.id}`
         }));
         
         setAllTrendingSongs(tracksWithProxy);
@@ -395,7 +396,7 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
     const fetchArtists = async () => {
       try {
         setIsLoadingArtists(true);
-        const response = await fetch('http://localhost:5001/api/jamendo/artists?limit=20');
+        const response = await fetch(`${API_BASE_URL}/api/jamendo/artists?limit=20`);
         const data = await response.json();
         setAllPopularArtists(data);
       } catch (error) {

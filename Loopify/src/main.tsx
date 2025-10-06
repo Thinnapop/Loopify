@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './App.css'
+import { API_BASE_URL } from '../config';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -9,7 +10,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 )
 // --- API Configuration ---
-const API_BASE_URL = 'http://localhost:5000/api'; // Your backend URL
+// Using centralized config from ../config.ts
 
 interface Song {
   id: number;
@@ -41,12 +42,12 @@ useEffect(() => {
   const fetchData = async () => {
     try {
       // Fetch trending songs
-      const songsResponse = await fetch('http://localhost:5000/api/songs/trending');
+      const songsResponse = await fetch(`${API_BASE_URL}/songs/trending`);
       const songs = await songsResponse.json();
       setAllTrendingSongs(songs);
       
       // Fetch popular artists
-      const artistsResponse = await fetch('http://localhost:5000/api/artists/popular');
+      const artistsResponse = await fetch(`${API_BASE_URL}/artists/popular`);
       const artists = await artistsResponse.json();
       setAllPopularArtists(artists);
     } catch (error) {
@@ -384,11 +385,11 @@ const MainContent: React.FC = () => {
 useEffect(() => {
   const fetchData = async () => {
     try {
-      const songsResponse = await fetch('http://localhost:5001/api/songs/trending');
+      const songsResponse = await fetch(`${API_BASE_URL}/songs/trending`);
       const songs = await songsResponse.json();
       setAllTrendingSongs(songs);
       
-      const artistsResponse = await fetch('http://localhost:5001/api/artists/popular');
+      const artistsResponse = await fetch(`${API_BASE_URL}/artists/popular`);
       const artists = await artistsResponse.json();
       setAllPopularArtists(artists);
     } catch (error) {

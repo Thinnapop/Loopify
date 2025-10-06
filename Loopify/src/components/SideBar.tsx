@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../config';
 
 interface SidebarProps {
   currentUser: any;
@@ -211,7 +212,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser,onPlaylistClick }) => {
   const fetchPlaylists = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5001/api/playlists', {
+      const response = await fetch(`${API_BASE_URL}/api/playlists`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -231,7 +232,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser,onPlaylistClick }) => {
 
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5001/api/playlists/create', {
+      const response = await fetch(`${API_BASE_URL}/api/playlists/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

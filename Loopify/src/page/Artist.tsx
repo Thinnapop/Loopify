@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../config';
 
 interface Song {
   id: number;
@@ -32,14 +33,14 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artist, onBackClick, onSongSele
     const fetchArtistSongs = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch('http://localhost:5001/api/jamendo/tracks?limit=50');
+        const response = await fetch(`${API_BASE_URL}/api/jamendo/tracks?limit=50`);
         const allTracks = await response.json();
         
         const filteredSongs = allTracks
           .filter((track: Song) => track.artist.toLowerCase() === artist.name.toLowerCase())
           .map((track: Song) => ({
             ...track,
-            audioUrl: `http://localhost:5001/api/stream/${track.id}`
+            audioUrl: `${API_BASE_URL}/api/stream/${track.id}`
           }));
         
         setArtistSongs(filteredSongs);
@@ -56,7 +57,7 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artist, onBackClick, onSongSele
     const fetchArtistSongs = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`http://localhost:5001/api/jamendo/artists/${artist.id}/tracks`);
+        const response = await fetch(`${API_BASE_URL}/api/jamendo/artists/${artist.id}/tracks`);
         const tracks = await response.json();
         setArtistSongs(tracks);
       } catch (error) {
