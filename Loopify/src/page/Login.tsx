@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../config';
 
 const pageStyles = `
   body, html {
@@ -302,7 +303,7 @@ interface LoginPageProps {
   onRegisterClick?: () => void;
 }
 
-const API_URL = 'http://localhost:5001/api';
+const API_URL = `${API_BASE_URL || 'http://localhost:5001'}/api`;
 
 const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess, onRegisterClick }) => {
   const [email, setEmail] = useState('');
@@ -383,7 +384,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess, onRe
         localStorage.setItem('loopifyUser', JSON.stringify(demoUser));
         onLoginSuccess(demoUser);
       } else {
-        setError('Cannot connect to server. Please ensure the backend is running on port 5000.');
+        setError('Cannot connect to server. Please ensure the backend is running on port 5001.');
       }
     } finally {
       setIsLoading(false);
