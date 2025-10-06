@@ -374,29 +374,87 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
       try {
         setIsLoadingSongs(true);
         // Jamendo API requires a client ID - get yours from https://developer.jamendo.com/
-        const JAMENDO_CLIENT_ID = import.meta.env.VITE_JAMENDO_CLIENT_ID || 'your_jamendo_client_id_here';
+        const JAMENDO_CLIENT_ID = import.meta.env.VITE_JAMENDO_CLIENT_ID || 'aba8b95b';
+
+        console.log('Fetching tracks with Client ID:', JAMENDO_CLIENT_ID);
+
         const response = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=50&include=audio`);
 
+        console.log('Jamendo API response status:', response.status);
+
         if (!response.ok) {
-          throw new Error(`Jamendo API error: ${response.status}`);
+          throw new Error(`Jamendo API error: ${response.status} - ${response.statusText}`);
         }
 
         const jamendoData = await response.json();
+        console.log('Jamendo tracks data:', jamendoData);
 
         // Transform Jamendo data to match our Song interface
         const tracksWithProxy = jamendoData.results?.map((track: any) => ({
           id: track.id,
           title: track.name,
           artist: track.artist_name,
-          cover: track.album_image || track.image,
+          cover: track.album_image || track.image || '/placeholder-cover.jpg',
           duration: track.duration ? `${Math.floor(track.duration / 60)}:${(track.duration % 60).toString().padStart(2, '0')}` : undefined,
           album: track.album_name,
           audioUrl: track.audio || '#'
         })) || [];
+
+        console.log('Transformed tracks:', tracksWithProxy.length);
         
         setAllTrendingSongs(tracksWithProxy);
       } catch (error) {
         console.error('Failed to fetch tracks:', error);
+
+        // Fallback sample data if Jamendo API fails
+        const fallbackTracks = [
+          {
+            id: 1,
+            title: "Bohemian Rhapsody",
+            artist: "Queen",
+            cover: "https://picsum.photos/300/300?random=1",
+            duration: "5:55",
+            album: "A Night at the Opera",
+            audioUrl: "#"
+          },
+          {
+            id: 2,
+            title: "Hotel California",
+            artist: "Eagles",
+            cover: "https://picsum.photos/300/300?random=2",
+            duration: "6:30",
+            album: "Hotel California",
+            audioUrl: "#"
+          },
+          {
+            id: 3,
+            title: "Stairway to Heaven",
+            artist: "Led Zeppelin",
+            cover: "https://picsum.photos/300/300?random=3",
+            duration: "8:02",
+            album: "Led Zeppelin IV",
+            audioUrl: "#"
+          },
+          {
+            id: 4,
+            title: "Imagine",
+            artist: "John Lennon",
+            cover: "https://picsum.photos/300/300?random=4",
+            duration: "3:03",
+            album: "Imagine",
+            audioUrl: "#"
+          },
+          {
+            id: 5,
+            title: "Sweet Child O' Mine",
+            artist: "Guns N' Roses",
+            cover: "https://picsum.photos/300/300?random=5",
+            duration: "5:03",
+            album: "Appetite for Destruction",
+            audioUrl: "#"
+          }
+        ];
+        setAllTrendingSongs(fallbackTracks);
       } finally {
         setIsLoadingSongs(false);
       }
@@ -410,26 +468,74 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
       try {
         setIsLoadingArtists(true);
         // Jamendo API requires a client ID - get yours from https://developer.jamendo.com/
-        const JAMENDO_CLIENT_ID = import.meta.env.VITE_JAMENDO_CLIENT_ID || 'your_jamendo_client_id_here';
+        const JAMENDO_CLIENT_ID = import.meta.env.VITE_JAMENDO_CLIENT_ID || 'aba8b95b';
+
+        console.log('Fetching artists with Client ID:', JAMENDO_CLIENT_ID);
+
         const response = await fetch(`https://api.jamendo.com/v3.0/artists/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=20`);
 
+        console.log('Jamendo Artists API response status:', response.status);
+
         if (!response.ok) {
-          throw new Error(`Jamendo API error: ${response.status}`);
+          throw new Error(`Jamendo API error: ${response.status} - ${response.statusText}`);
         }
 
         const jamendoData = await response.json();
+        console.log('Jamendo artists data:', jamendoData);
 
         // Transform Jamendo data to match our Artist interface
         const transformedArtists = jamendoData.results?.map((artist: any) => ({
           id: artist.id,
           name: artist.name,
           type: artist.type || 'Artist',
-          avatar: artist.image || artist.avatar,
+          avatar: artist.image || artist.avatar || '/placeholder-avatar.jpg',
           followers: artist.followers ? `${artist.followers} followers` : undefined
         })) || [];
+
+        console.log('Transformed artists:', transformedArtists.length);
         setAllPopularArtists(transformedArtists);
       } catch (error) {
         console.error('Failed to fetch artists:', error);
+
+        // Fallback sample data if Jamendo API fails
+        const fallbackArtists = [
+          {
+            id: 1,
+            name: "Queen",
+            type: "Rock Band",
+            avatar: "https://picsum.photos/200/200?random=10",
+            followers: "50M+ followers"
+          },
+          {
+            id: 2,
+            name: "The Beatles",
+            type: "Rock Band",
+            avatar: "https://picsum.photos/200/200?random=11",
+            followers: "45M+ followers"
+          },
+          {
+            id: 3,
+            name: "Michael Jackson",
+            type: "Pop Artist",
+            avatar: "https://picsum.photos/200/200?random=12",
+            followers: "40M+ followers"
+          },
+          {
+            id: 4,
+            name: "Elvis Presley",
+            type: "Rock Artist",
+            avatar: "https://picsum.photos/200/200?random=13",
+            followers: "35M+ followers"
+          },
+          {
+            id: 5,
+            name: "Madonna",
+            type: "Pop Artist",
+            avatar: "https://picsum.photos/200/200?random=14",
+            followers: "30M+ followers"
+          }
+        ];
+        setAllPopularArtists(fallbackArtists);
       } finally {
         setIsLoadingArtists(false);
       }
@@ -572,7 +678,7 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
             animation: 'spin 1s linear infinite'
           }}></div>
           <div style={{ fontSize: '16px', color: '#b3b3b3' }}>
-            Loading music from database...
+            Loading music from Jamendo API...
           </div>
         </div>
       </>

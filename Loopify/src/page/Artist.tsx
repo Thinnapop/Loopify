@@ -58,6 +58,56 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artist, onBackClick, onSongSele
         setArtistSongs(transformedTracks);
       } catch (error) {
         console.error('Failed to fetch artist songs:', error);
+
+        // Fallback sample data if Jamendo API fails
+        const fallbackArtistTracks = [
+          {
+            id: 1,
+            title: "Bohemian Rhapsody",
+            artist: artist.name,
+            cover: "https://picsum.photos/300/300?random=1",
+            duration: "5:55",
+            album: "A Night at the Opera",
+            audioUrl: "#"
+          },
+          {
+            id: 2,
+            title: "We Will Rock You",
+            artist: artist.name,
+            cover: "https://picsum.photos/300/300?random=2",
+            duration: "2:02",
+            album: "News of the World",
+            audioUrl: "#"
+          },
+          {
+            id: 3,
+            title: "Don't Stop Me Now",
+            artist: artist.name,
+            cover: "https://picsum.photos/300/300?random=3",
+            duration: "3:29",
+            album: "Jazz",
+            audioUrl: "#"
+          },
+          {
+            id: 4,
+            title: "We Are the Champions",
+            artist: artist.name,
+            cover: "https://picsum.photos/300/300?random=4",
+            duration: "2:59",
+            album: "News of the World",
+            audioUrl: "#"
+          },
+          {
+            id: 5,
+            title: "Somebody to Love",
+            artist: artist.name,
+            cover: "https://picsum.photos/300/300?random=5",
+            duration: "4:56",
+            album: "A Day at the Races",
+            audioUrl: "#"
+          }
+        ];
+        setArtistSongs(fallbackArtistTracks);
       } finally {
         setIsLoading(false);
       }
