@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../config';
 
 interface JoinPlaylistPageProps {
   inviteCode: string;
@@ -22,7 +23,7 @@ const JoinPlaylistPage: React.FC<JoinPlaylistPageProps> = ({ inviteCode, onBackC
 
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5001/api/playlists/join/${inviteCode}`, {
+      const response = await fetch(`${API_BASE_URL}/api/playlists/join/${inviteCode}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

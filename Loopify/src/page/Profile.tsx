@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
+import { API_BASE_URL } from '../../config';
 
 const profileStyles = `
   * {
@@ -480,7 +481,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
         const token = localStorage.getItem('authToken');
         if (!token) return;
         
-        const response = await fetch('http://localhost:5001/api/auth/profile', {
+        const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -522,7 +523,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({
           return;
         }
         
-        const response = await fetch('http://localhost:5001/api/user/stats', {
+        const response = await fetch(`${API_BASE_URL}/api/user/stats`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../config';
 
 interface PlaylistDetailProps {
   playlistId: number;
@@ -26,7 +27,7 @@ const handleGenerateInvite = async () => {
     console.log(`Invite code generated for playlist ${playlistId} with role ${inviteRole}`);
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5001/api/playlists/${playlistId}/invite`, {
+      const response = await fetch(`${API_BASE_URL}/api/playlists/${playlistId}/invite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -56,7 +57,7 @@ const handleCopyInvite = () => {
 const fetchMembers = async () => {
   try {
     const token = localStorage.getItem('authToken');
-    const response = await fetch(`http://localhost:5001/api/playlists/${playlistId}/members`, {
+    const response = await fetch(`${API_BASE_URL}/api/playlists/${playlistId}/members`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await response.json();
@@ -72,7 +73,7 @@ const handleRemoveMember = async (userId: number) => {
   try {
     const token = localStorage.getItem('authToken');
     const response = await fetch(
-      `http://localhost:5001/api/playlists/${playlistId}/members/${userId}`,
+      `${API_BASE_URL}/api/playlists/${playlistId}/members/${userId}`,
       {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -97,7 +98,7 @@ const handleRemoveMember = async (userId: number) => {
   const fetchPlaylistDetails = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5001/api/playlists/${playlistId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/playlists/${playlistId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -121,7 +122,7 @@ const handleRemoveMember = async (userId: number) => {
 
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5001/api/playlists/${playlistId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/playlists/${playlistId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -155,7 +156,7 @@ const handleRemoveMember = async (userId: number) => {
     try {
       const token = localStorage.getItem('authToken');
       const response = await fetch(
-        `http://localhost:5001/api/playlists/${playlistId}/tracks/${trackId}`,
+        `${API_BASE_URL}/api/playlists/${playlistId}/tracks/${trackId}`,
         {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
@@ -177,7 +178,7 @@ const handleRemoveMember = async (userId: number) => {
   const handleDeletePlaylist = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5001/api/playlists/${playlistId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/playlists/${playlistId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_BASE_URL } from '../../config';
 
 const pageStyles = `
   * {
@@ -268,7 +269,7 @@ interface FormData {
   language: string;
 }
 
-const API_URL = 'http://localhost:5001/api';
+const API_URL = `${API_BASE_URL || 'http://localhost:5001'}/api`;
 
 export default function RegistPage({ onBackClick = () => {}, onRegistrationSuccess = () => {} }: RegistPageProps) {
   const [formData, setFormData] = useState<FormData>({
@@ -419,7 +420,7 @@ export default function RegistPage({ onBackClick = () => {}, onRegistrationSucce
       }
     } catch (error) {
       console.error('Registration error:', error);
-      setError('Cannot connect to server. Please make sure the backend server is running on http://localhost:5001');
+      setError('Cannot connect to server. Please ensure the backend is running on port 5001.');
     } finally {
       setIsLoading(false);
     }

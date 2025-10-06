@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../config';
 
 interface AddToPlaylistModalProps {
   trackId: number;
@@ -16,7 +17,7 @@ const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({ trackId, onClos
   const fetchPlaylists = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5001/api/playlists', {
+      const response = await fetch(`${API_BASE_URL}/api/playlists`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -31,7 +32,7 @@ const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({ trackId, onClos
   const handleAddToPlaylist = async (playlistId: number) => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5001/api/playlists/${playlistId}/tracks`, {
+      const response = await fetch(`${API_BASE_URL}/api/playlists/${playlistId}/tracks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
