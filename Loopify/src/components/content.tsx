@@ -378,17 +378,100 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
 
         console.log('Fetching tracks with Client ID:', JAMENDO_CLIENT_ID);
 
-        const response = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=200&include=audio&boost=popularity_total`);
-
-        console.log('Jamendo API response status:', response.status);
-
-        if (!response.ok) {
-          throw new Error(`Jamendo API error: ${response.status} - ${response.statusText}`);
+        // First, let's test if the Client ID works at all
+        try {
+          const testResponse = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=1`);
+          console.log('Test API response status:', testResponse.status);
+          if (testResponse.ok) {
+            const testData = await testResponse.json();
+            console.log('Test API works! Sample result:', testData.results?.[0]);
+          }
+        } catch (error) {
+          console.log('Test API failed:', error);
         }
 
-        const jamendoData = await response.json();
-        console.log('Jamendo tracks data (full):', jamendoData);
-        console.log('Jamendo tracks results:', jamendoData.results);
+        // Also test with a known working public Client ID
+        try {
+          console.log('Testing with public Client ID...');
+          const publicResponse = await fetch('https://api.jamendo.com/v3.0/tracks/?client_id=a287e50a&format=json&limit=1');
+          console.log('Public Client ID response status:', publicResponse.status);
+          if (publicResponse.ok) {
+            const publicData = await publicResponse.json();
+            console.log('Public Client ID works! Sample result:', publicData.results?.[0]);
+          }
+        } catch (error) {
+          console.log('Public Client ID test failed:', error);
+        }
+
+        // Try multiple approaches to get tracks data
+        let jamendoData: any = { results: [] };
+
+        // Approach 1: Simple tracks request
+        try {
+          const response = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=200`);
+          console.log('Simple tracks API response status:', response.status);
+
+          if (response.ok) {
+            jamendoData = await response.json();
+            console.log('Simple tracks data results length:', jamendoData.results?.length);
+          }
+        } catch (error) {
+          console.log('Simple approach failed:', error);
+        }
+
+        // Approach 2: If no results, try with different parameters
+        if (!jamendoData.results || jamendoData.results.length === 0) {
+          console.log('No tracks found with simple approach, trying with boost...');
+          try {
+            const response2 = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=200&boost=popularity_total`);
+            if (response2.ok) {
+              const data2 = await response2.json();
+              if (data2.results && data2.results.length > 0) {
+                jamendoData = data2;
+                console.log('Boost approach results length:', jamendoData.results?.length);
+              }
+            }
+          } catch (error) {
+            console.log('Boost approach failed:', error);
+          }
+        }
+
+        // Approach 3: If still no results, try a smaller limit
+        if (!jamendoData.results || jamendoData.results.length === 0) {
+          console.log('No tracks found, trying with limit=50...');
+          try {
+            const response3 = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=50`);
+            if (response3.ok) {
+              const data3 = await response3.json();
+              if (data3.results && data3.results.length > 0) {
+                jamendoData = data3;
+                console.log('Limit=50 approach results length:', jamendoData.results?.length);
+              }
+            }
+          } catch (error) {
+            console.log('Limit=50 approach failed:', error);
+          }
+        }
+
+        // Approach 4: If still no results, try with public Client ID
+        if (!jamendoData.results || jamendoData.results.length === 0) {
+          console.log('No tracks found with your Client ID, trying with public Client ID...');
+          try {
+            const response4 = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=a287e50a&format=json&limit=200`);
+            if (response4.ok) {
+              const data4 = await response4.json();
+              if (data4.results && data4.results.length > 0) {
+                jamendoData = data4;
+                console.log('Public Client ID approach results length:', jamendoData.results?.length);
+              }
+            }
+          } catch (error) {
+            console.log('Public Client ID approach failed:', error);
+          }
+        }
+
+        console.log('Final Jamendo tracks data:', jamendoData);
+        console.log('Final results length:', jamendoData.results?.length);
 
         // Transform Jamendo data to match our Song interface
         const tracksWithProxy = jamendoData.results?.map((track: any) => ({
@@ -401,7 +484,7 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
           audioUrl: track.audio || '#'
         })) || [];
 
-        console.log('Transformed tracks:', tracksWithProxy.length);
+        console.log('Final transformed tracks:', tracksWithProxy.length);
         console.log('Sample track:', tracksWithProxy[0]);
         
         setAllTrendingSongs(tracksWithProxy);
@@ -470,7 +553,14 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
       try {
         setIsLoadingArtists(true);
         // Jamendo API requires a client ID - get yours from https://developer.jamendo.com/
+        // Using a test Client ID first to verify the API works
         const JAMENDO_CLIENT_ID = import.meta.env.VITE_JAMENDO_CLIENT_ID || 'aba8b95b';
+
+        // For testing, you can also try: 'a287e50a' (public test ID)
+        const TEST_CLIENT_ID = 'a287e50a';
+
+        // If your Client ID doesn't work, uncomment this line:
+        // const JAMENDO_CLIENT_ID = TEST_CLIENT_ID;
 
         console.log('Fetching artists with Client ID:', JAMENDO_CLIENT_ID);
 
