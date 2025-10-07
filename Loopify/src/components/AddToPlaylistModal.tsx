@@ -42,6 +42,10 @@ const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({ trackId, onClos
       });
 
       if (response.ok) {
+        // Dispatch custom event to notify other components
+        window.dispatchEvent(new CustomEvent('playlistTrackAdded', {
+          detail: { playlistId }
+        }));
         alert('Track added to playlist!');
         onClose();
       } else {

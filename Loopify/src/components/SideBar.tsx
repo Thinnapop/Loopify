@@ -209,6 +209,19 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser,onPlaylistClick }) => {
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    const handlePlaylistTrackAdded = () => {
+      console.log('Refreshing sidebar playlists after track added');
+      fetchPlaylists();
+    };
+
+    window.addEventListener('playlistTrackAdded', handlePlaylistTrackAdded);
+
+    return () => {
+      window.removeEventListener('playlistTrackAdded', handlePlaylistTrackAdded);
+    };
+  }, []);
+
   const fetchPlaylists = async () => {
     try {
       const token = localStorage.getItem('authToken');

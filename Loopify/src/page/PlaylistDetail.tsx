@@ -95,6 +95,22 @@ const handleRemoveMember = async (userId: number) => {
     fetchPlaylistDetails();
   }, [playlistId]);
 
+  useEffect(() => {
+    const handlePlaylistTrackAdded = (event: CustomEvent) => {
+      const { playlistId: updatedPlaylistId } = event.detail;
+      if (updatedPlaylistId === playlistId) {
+        console.log('Refreshing playlist data after track added');
+        fetchPlaylistDetails();
+      }
+    };
+
+    window.addEventListener('playlistTrackAdded', handlePlaylistTrackAdded as EventListener);
+
+    return () => {
+      window.removeEventListener('playlistTrackAdded', handlePlaylistTrackAdded as EventListener);
+    };
+  }, [playlistId]);
+
   const fetchPlaylistDetails = async () => {
     try {
       const token = localStorage.getItem('authToken');
