@@ -8,10 +8,12 @@ require('dotenv').config();
 
 const app = express();
 
+
 // CORS configuration
 const corsOptions = {
   origin: [
     'http://localhost:5175',
+    'http://localhost:5174',
     'http://localhost:5173',
     'http://127.0.0.1:5175',
     'https://loopify-backend-sshh.onrender.com',
