@@ -3,7 +3,7 @@ import { API_BASE_URL } from '../../config';
 
 interface SidebarProps {
   currentUser: any;
-  onPlaylistClick: (playlistId: string) => void; // CHANGED TO STRING
+  onPlaylistClick: (playlistId: number) => void;
 }
 
 const sidebarStyles = `
@@ -198,7 +198,7 @@ const sidebarStyles = `
   }
 `;
 
-const Sidebar: React.FC<SidebarProps> = ({ currentUser, onPlaylistClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentUser,onPlaylistClick }) => {
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newPlaylistTitle, setNewPlaylistTitle] = useState('');
@@ -225,23 +225,15 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, onPlaylistClick }) => {
   const fetchPlaylists = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      // CHANGED: Use correct endpoint
-      const response = await fetch(`${API_BASE_URL}/api/playlists/user`, {
+      const response = await fetch(`${API_BASE_URL}/api/playlists`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch playlists');
-      }
-      
       const data = await response.json();
-      console.log('📚 Fetched playlists:', data);
       setPlaylists(data);
     } catch (error) {
       console.error('Failed to fetch playlists:', error);
-      setPlaylists([]);
     }
   };
 
@@ -261,7 +253,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, onPlaylistClick }) => {
         },
         body: JSON.stringify({
           title: newPlaylistTitle,
-          visibility: 'private'
+          visibility: 'Private'
         })
       });
 
@@ -270,8 +262,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, onPlaylistClick }) => {
         setShowCreateModal(false);
         fetchPlaylists();
       } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to create playlist');
+        alert('Failed to create playlist');
       }
     } catch (error) {
       console.error('Failed to create playlist:', error);
@@ -279,8 +270,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, onPlaylistClick }) => {
     }
   };
 
-  const handlePlaylistClick = (playlistId: string) => {
-    console.log('🎵 Clicked playlist:', playlistId, 'Type:', typeof playlistId);
+  const handlePlaylistClick = (playlistId: number) => {
     onPlaylistClick(playlistId);
   };
 
@@ -302,14 +292,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, onPlaylistClick }) => {
           playlists.length > 0 ? (
             <div className="playlists-container">
               {playlists.map(playlist => (
-                <div 
-                  key={playlist.playlistId} 
-                  className="playlist-item" 
-                  onClick={() => handlePlaylistClick(playlist.playlistId)}
-                >
+                <div key={playlist.id} className="playlist-item" onClick={() => handlePlaylistClick(playlist.id)}>
                   <div className="playlist-title">{playlist.title}</div>
                   <div className="playlist-meta">
-                    Playlist • {playlist.trackCount || 0} songs
+                    Playlist • {playlist.trackCount} songs
                   </div>
                 </div>
               ))}
