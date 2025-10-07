@@ -445,78 +445,6 @@ app.get('/api/playlists/collaborative', authenticateToken, async (req, res) => {
   }
 });
 
-// Get playlist details with tracks and members
-app.get('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
-  try {
-    const { playlistId } = req.params;
-    
-    const playlists = await pool.query(
-      'SELECT * FROM "Playlist" WHERE "PlaylistID" = $1',
-      [playlistId]
-    );
-    
-    if (playlists.rows.length === 0) {
-      return res.status(404).json({ error: 'Playlist not found' });
-    }
-    
-    const memberRole = await pool.query(
-      'SELECT "Role" FROM "PlaylistMember" WHERE "PlaylistID" = $1 AND "UserID" = $2',
-      [playlistId, req.user.userId]
-    );
-    
-    const members = await pool.query(
-      `SELECT pm.*, u."displayName", u.email 
-       FROM "PlaylistMember" pm
-       JOIN users u ON pm."UserID" = u."userId"
-       WHERE pm."PlaylistID" = $1`,
-      [playlistId]
-    );
-    
-    const tracks = await pool.query(`
-      SELECT 
-        pi."ListItemID" as id,
-        pi."Position",
-        t."TrackID" as "trackId",
-        t."Title" as title,
-        t."DurationMs",
-        t."CoverURL" as cover,
-        a."Name" as artist,
-        u."displayName" as "addedBy",
-        pi."AddedAt"
-       FROM "PlaylistItem" pi
-       JOIN "Track" t ON pi."TrackID" = t."TrackID"
-       JOIN "ArtistTrack" at ON t."TrackID" = at."TrackID"
-       JOIN "Artist" a ON at."ArtistID" = a."ArtistID"
-       JOIN users u ON pi."AddedByUserID" = u."userId"
-       WHERE pi."PlaylistID" = $1
-       ORDER BY pi."Position"`,
-      [playlistId]
-    );
-    
-    const playlist = playlists.rows[0];
-    
-    res.json({
-      playlistId: playlist.PlaylistID,
-      title: playlist.Title,
-      description: playlist.Description,
-      visibility: playlist.Visibility,
-      role: memberRole.rows[0]?.Role || 'Viewer',
-      members: members.rows,
-      tracks: tracks.rows.map(t => ({
-        id: t.trackId,
-        title: t.title,
-        artist: t.artist,
-        cover: t.cover,
-        duration: formatDuration(t.DurationMs),
-        addedBy: t.addedBy
-      }))
-    });
-  } catch (error) {
-    console.error('Playlist details error:', error);
-    res.status(500).json({ error: 'Failed to fetch playlist details' });
-  }
-});
-
 // Create collaborative playlist
 app.post('/api/playlists/create', authenticateToken, async (req, res) => {
   try {
@@ -548,34 +476,64 @@ app.post('/api/playlists/create', authenticateToken, async (req, res) => {
   }
 });
 
-// Get playlist details with tracks and members - FIXED
+// ==================== COLLABORATIVE PLAYLIST ROUTES ====================
+// Get user's collaborative playlists
+app.get('/api/playlists/collaborative', authenticateToken, async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        p."PlaylistID" as "playlistId",
+        p."Title" as title,
+        p."Description" as description,
+        p."Visibility" as visibility,
+        pm."Role" as "userRole",
+        COUNT(DISTINCT pm2."UserID") as "memberCount",
+        COUNT(DISTINCT pi."TrackID") as "trackCount"
+      FROM "Playlist" p
+      JOIN "PlaylistMember" pm ON p."PlaylistID" = pm."PlaylistID"
+      LEFT JOIN "PlaylistMember" pm2 ON p."PlaylistID" = pm2."PlaylistID"
+      LEFT JOIN "PlaylistItem" pi ON p."PlaylistID" = pi."PlaylistID"
+      WHERE pm."UserID" = $1 AND p."Visibility" IN ('shared', 'public')
+      GROUP BY p."PlaylistID", p."Title", p."Description", p."Visibility", pm."Role"
+    `;
+    
+    const playlists = await pool.query(query, [req.user.userId]);
+    res.json(playlists.rows);
+  } catch (error) {
+    console.error('Collaborative playlists error:', error);
+    res.status(500).json({ error: 'Failed to fetch collaborative playlists' });
+  }
+});
+
+// Get playlist details with tracks and members
 app.get('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
   try {
     const { playlistId } = req.params;
     
-    console.log('📋 Fetching playlist:', playlistId);
+    console.log('🔍 DEBUG - Requested playlistId:', playlistId, 'Type:', typeof playlistId);
+    console.log('🔍 DEBUG - User ID:', req.user.userId);
     
-    // Get playlist info
     const playlists = await pool.query(
       'SELECT * FROM "Playlist" WHERE "PlaylistID" = $1',
       [playlistId]
     );
     
+    console.log('🔍 DEBUG - Playlists found:', playlists.rows.length);
+    
     if (playlists.rows.length === 0) {
+      console.log('❌ Playlist not found with ID:', playlistId);
       return res.status(404).json({ error: 'Playlist not found' });
     }
     
-    console.log('✅ Playlist found:', playlists.rows[0]);
+    console.log('✅ Playlist found:', playlists.rows[0].PlaylistID, playlists.rows[0].Title);
     
-    // Get user's role
     const memberRole = await pool.query(
       'SELECT "Role" FROM "PlaylistMember" WHERE "PlaylistID" = $1 AND "UserID" = $2',
       [playlistId, req.user.userId]
     );
     
-    console.log('👤 User role:', memberRole.rows[0]?.Role);
+    console.log('🔍 DEBUG - User role:', memberRole.rows[0]?.Role);
     
-    // Get members
     const members = await pool.query(
       `SELECT pm.*, u."displayName", u.email 
        FROM "PlaylistMember" pm
@@ -584,9 +542,8 @@ app.get('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
       [playlistId]
     );
     
-    console.log('👥 Members count:', members.rows.length);
+    console.log('🔍 DEBUG - Members count:', members.rows.length);
     
-    // Get tracks - FIXED with proper column aliases
     const tracks = await pool.query(`
       SELECT 
         pi."ListItemID",
@@ -608,8 +565,10 @@ app.get('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
       [playlistId]
     );
     
-    console.log('🎵 Tracks found:', tracks.rows.length);
-    console.log('🎵 Track details:', JSON.stringify(tracks.rows, null, 2));
+    console.log('🔍 DEBUG - Tracks found:', tracks.rows.length);
+    if (tracks.rows.length > 0) {
+      console.log('🔍 DEBUG - First track:', tracks.rows[0]);
+    }
     
     const playlist = playlists.rows[0];
     
@@ -630,16 +589,122 @@ app.get('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
       }))
     };
     
-    console.log('📦 Final response tracks count:', response.tracks.length);
+    console.log('📦 DEBUG - Response tracks count:', response.tracks.length);
     
     res.json(response);
   } catch (error) {
     console.error('❌ Playlist details error:', error);
     console.error('Stack:', error.stack);
-    res.status(500).json({ 
-      error: 'Failed to fetch playlist details',
-      details: error.message 
+    res.status(500).json({ error: 'Failed to fetch playlist details' });
+  }
+});
+
+// Create collaborative playlist
+app.post('/api/playlists/create', authenticateToken, async (req, res) => {
+  try {
+    const { title, description, visibility } = req.body;
+    const playlistId = 'playlist_' + Date.now();
+    
+    console.log('📝 Creating playlist:', title, 'for user:', req.user.userId);
+    
+    await pool.query(
+      `INSERT INTO "Playlist" ("PlaylistID", "Title", "Description", "Visibility", "CreatorID") 
+       VALUES ($1, $2, $3, $4, $5)`,
+      [playlistId, title, description, visibility || 'private', req.user.userId]
+    );
+    
+    await pool.query(
+      `INSERT INTO "PlaylistMember" ("PlaylistID", "UserID", "Role") 
+       VALUES ($1, $2, 'Owner')`,
+      [playlistId, req.user.userId]
+    );
+    
+    console.log('✅ Playlist created:', playlistId);
+    
+    res.json({
+      playlistId,
+      title,
+      description,
+      visibility: visibility || 'private',
+      message: 'Playlist created successfully'
     });
+  } catch (error) {
+    console.error('❌ Create playlist error:', error);
+    res.status(500).json({ error: 'Failed to create playlist', details: error.message });
+  }
+});
+
+// Add track to playlist - THIS WAS MISSING!
+app.post('/api/playlists/:playlistId/tracks', authenticateToken, async (req, res) => {
+  try {
+    const { playlistId } = req.params;
+    const { trackId } = req.body;
+    
+    console.log('➕ Adding track:', trackId, 'to playlist:', playlistId);
+    
+    const member = await pool.query(
+      'SELECT "Role" FROM "PlaylistMember" WHERE "PlaylistID" = $1 AND "UserID" = $2',
+      [playlistId, req.user.userId]
+    );
+    
+    if (member.rows.length === 0 || member.rows[0].Role === 'Viewer') {
+      return res.status(403).json({ error: 'No permission to add tracks' });
+    }
+    
+    const existing = await pool.query(
+      'SELECT * FROM "PlaylistItem" WHERE "PlaylistID" = $1 AND "TrackID" = $2',
+      [playlistId, trackId]
+    );
+    
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'Track already in playlist' });
+    }
+    
+    const maxPos = await pool.query(
+      'SELECT MAX("Position") as "maxPos" FROM "PlaylistItem" WHERE "PlaylistID" = $1',
+      [playlistId]
+    );
+    
+    const position = (maxPos.rows[0].maxPos || 0) + 1;
+    const itemId = 'item_' + Date.now();
+    
+    await pool.query(
+      `INSERT INTO "PlaylistItem" ("ListItemID", "PlaylistID", "TrackID", "AddedByUserID", "Position") 
+       VALUES ($1, $2, $3, $4, $5)`,
+      [itemId, playlistId, trackId, req.user.userId, position]
+    );
+    
+    console.log('✅ Track added successfully');
+    res.json({ message: 'Track added successfully', itemId });
+  } catch (error) {
+    console.error('❌ Add track error:', error);
+    res.status(500).json({ error: 'Failed to add track', details: error.message });
+  }
+});
+
+// Remove track from playlist
+app.delete('/api/playlists/:playlistId/tracks/:trackId', authenticateToken, async (req, res) => {
+  try {
+    const { playlistId, trackId } = req.params;
+    
+    const member = await pool.query(
+      'SELECT "Role" FROM "PlaylistMember" WHERE "PlaylistID" = $1 AND "UserID" = $2',
+      [playlistId, req.user.userId]
+    );
+    
+    if (member.rows.length === 0 || member.rows[0].Role === 'Viewer') {
+      return res.status(403).json({ error: 'No permission to remove tracks' });
+    }
+    
+    await pool.query(
+      'DELETE FROM "PlaylistItem" WHERE "PlaylistID" = $1 AND "TrackID" = $2',
+      [playlistId, trackId]
+    );
+    
+    res.json({ message: 'Track removed successfully' });
+  } catch (error) {
+    console.error('Remove track error:', error);
+    res.status(500).json({ error: 'Failed to remove track' });
   }
 });
 // Remove track from playlist - FIXED
