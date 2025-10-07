@@ -307,7 +307,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser,onPlaylistClick }) => {
           playlists.length > 0 ? (
             <div className="playlists-container">
               {playlists.map(playlist => (
-                <div key={playlist.id} className="playlist-item" onClick={() => handlePlaylistClick(playlist.id)}>
+                <div key={playlist.playlistId} className="playlist-item" onClick={() => handlePlaylistClick(playlist.playlistId)}>
                   <div className="playlist-title">{playlist.title}</div>
                   <div className="playlist-meta">
                     Playlist • {playlist.trackCount} songs
