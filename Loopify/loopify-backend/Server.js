@@ -697,7 +697,19 @@ app.get('/api/tracks/trending', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch trending tracks' });
   }
 });
-
+// Root route for testing
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Loopify API is running!',
+    status: 'healthy',
+    endpoints: {
+      auth: '/api/auth/register, /api/auth/login',
+      songs: '/api/songs/trending',
+      artists: '/api/artists/popular',
+      playlists: '/api/playlists/user'
+    }
+  });
+});
 // ==================== START SERVER ====================
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
