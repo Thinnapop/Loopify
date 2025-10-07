@@ -505,6 +505,36 @@ app.get('/api/playlists/collaborative', authenticateToken, async (req, res) => {
   }
 });
 
+// Get user's playlists (all types)
+app.get('/api/playlists/user', authenticateToken, async (req, res) => {
+  try {
+    console.log('📚 Fetching playlists for user:', req.user.userId);
+    
+    const query = `
+      SELECT 
+        p."PlaylistID" as "playlistId",
+        p."Title" as title,
+        p."Description" as description,
+        p."Visibility" as visibility,
+        pm."Role" as role,
+        COUNT(DISTINCT pi."TrackID") as "trackCount"
+      FROM "Playlist" p
+      JOIN "PlaylistMember" pm ON p."PlaylistID" = pm."PlaylistID"
+      LEFT JOIN "PlaylistItem" pi ON p."PlaylistID" = pi."PlaylistID"
+      WHERE pm."UserID" = $1
+      GROUP BY p."PlaylistID", p."Title", p."Description", p."Visibility", pm."Role"
+      ORDER BY p."CreatedAt" DESC
+    `;
+    
+    const playlists = await pool.query(query, [req.user.userId]);
+    console.log('📚 Found playlists:', playlists.rows.length);
+    
+    res.json(playlists.rows);
+  } catch (error) {
+    console.error('❌ Fetch user playlists error:', error);
+    res.status(500).json({ error: 'Failed to fetch playlists', details: error.message });
+  }
+});
 // Get playlist details with tracks and members
 app.get('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
   try {
