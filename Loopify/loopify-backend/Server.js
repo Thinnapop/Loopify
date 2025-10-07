@@ -597,16 +597,39 @@ app.post('/api/playlists/:playlistId/tracks', authenticateToken, async (req, res
     const { playlistId } = req.params;
     const { trackId } = req.body;
     
-    console.log('➕ Adding track:', trackId, 'to playlist:', playlistId);
+    console.log('=== ADD TRACK DEBUG ===');
+    console.log('📋 PlaylistId from URL:', playlistId);
+    console.log('🎵 TrackId from body:', trackId);
+    console.log('👤 UserId from token:', req.user.userId);
+    console.log('👤 Full user object:', req.user);
     
+    // Check membership
     const member = await pool.query(
-      'SELECT "role" FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
+      'SELECT * FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
       [playlistId, req.user.userId]
     );
     
-    if (member.rows.length === 0 || member.rows[0].role === 'viewer') {
+    console.log('🔍 Membership found:', member.rows);
+    console.log('🔍 Row count:', member.rows.length);
+    
+    if (member.rows.length === 0) {
+      console.log('❌ No membership record found!');
+      return res.status(403).json({ 
+        error: 'No permission to add tracks',
+        debug: {
+          playlistId,
+          userId: req.user.userId,
+          membershipFound: false
+        }
+      });
+    }
+    
+    if (member.rows[0].role === 'viewer') {
+      console.log('❌ User is only a viewer!');
       return res.status(403).json({ error: 'No permission to add tracks' });
     }
+    
+    console.log('✅ Permission check passed! Role:', member.rows[0].role);
     
     const existing = await pool.query(
       'SELECT * FROM playlistitem WHERE "playlistid" = $1 AND "trackid" = $2',
@@ -636,31 +659,6 @@ app.post('/api/playlists/:playlistId/tracks', authenticateToken, async (req, res
   } catch (error) {
     console.error('❌ Add track error:', error);
     res.status(500).json({ error: 'Failed to add track', details: error.message });
-  }
-});
-
-app.delete('/api/playlists/:playlistId/tracks/:trackId', authenticateToken, async (req, res) => {
-  try {
-    const { playlistId, trackId } = req.params;
-    
-    const member = await pool.query(
-      'SELECT "role" FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
-      [playlistId, req.user.userId]
-    );
-    
-    if (member.rows.length === 0 || member.rows[0].role === 'viewer') {
-      return res.status(403).json({ error: 'No permission to remove tracks' });
-    }
-    
-    await pool.query(
-      'DELETE FROM playlistitem WHERE "playlistid" = $1 AND "trackid" = $2',
-      [playlistId, trackId]
-    );
-    
-    res.json({ message: 'Track removed successfully' });
-  } catch (error) {
-    console.error('Remove track error:', error);
-    res.status(500).json({ error: 'Failed to remove track' });
   }
 });
 
