@@ -225,12 +225,25 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser,onPlaylistClick }) => {
   const fetchPlaylists = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/playlists`, {
+      if (!token) {
+        console.error('No auth token found');
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/playlists/user`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Fetch playlists failed:', response.status, errorData);
+        return;
+      }
+
       const data = await response.json();
+      console.log('Fetched playlists:', data.length);
       setPlaylists(data);
     } catch (error) {
       console.error('Failed to fetch playlists:', error);
@@ -262,7 +275,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser,onPlaylistClick }) => {
         setShowCreateModal(false);
         fetchPlaylists();
       } else {
-        alert('Failed to create playlist');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Create playlist failed:', response.status, errorData);
+        alert(`Failed to create playlist: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Failed to create playlist:', error);

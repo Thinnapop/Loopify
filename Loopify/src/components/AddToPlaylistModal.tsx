@@ -17,7 +17,7 @@ const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({ trackId, onClos
   const fetchPlaylists = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE_URL}/api/playlists`, {
+      const response = await fetch(`${API_BASE_URL}/api/playlists/user`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
