@@ -1,6 +1,6 @@
 // server.js
 const express = require('express');
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -26,22 +26,19 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// Create connection pool for better performance - AFTER CORS
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'project',
-  password: process.env.DB_PASSWORD || 'Namozaza_1235',
-  database: process.env.DB_NAME || 'loopify',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+// Create PostgreSQL connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
 });
 
 // Test database connection
-pool.getConnection()
-  .then(connection => {
-    console.log('✅ Connected to MySQL database successfully');
-    connection.release();
+pool.connect()
+  .then(() => {
+    console.log('✅ Connected to PostgreSQL database successfully');
   })
   .catch(err => {
     console.error('❌ Database connection failed:');
@@ -92,15 +89,15 @@ const authenticateToken = (req, res, next) => {
 // Test endpoint to check database
 app.get('/api/test/db', async (req, res) => {
   try {
-    const [result] = await pool.execute('SELECT 1 as test');
-    res.json({ 
-      message: 'Database connection successful', 
-      result: result[0],
-      database: process.env.DB_NAME || 'loopify'
+    const result = await pool.query('SELECT 1 as test');
+    res.json({
+      message: 'Database connection successful',
+      result: result.rows[0],
+      database: process.env.DB_NAME || 'loopify_database'
     });
   } catch (error) {
     console.error('Database test error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Database connection failed',
       details: error.message,
       code: error.code
@@ -108,21 +105,21 @@ app.get('/api/test/db', async (req, res) => {
   }
 });
 
-// Test endpoint to check if Users table exists
+// Test endpoint to check if users table exists
 app.get('/api/test/users', async (req, res) => {
   try {
-    const [result] = await pool.execute('SELECT COUNT(*) as count FROM Users');
-    res.json({ 
-      message: 'Users table exists', 
-      userCount: result[0].count
+    const result = await pool.query('SELECT COUNT(*) as count FROM users');
+    res.json({
+      message: 'Users table exists',
+      userCount: result.rows[0].count
     });
   } catch (error) {
     console.error('Users table test error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Users table not found or accessible',
       details: error.message,
       code: error.code,
-      hint: 'Run: mysql -u project -p loopify < data.sql'
+      hint: 'Run the PostgreSQL schema in your database'
     });
   }
 });
@@ -140,25 +137,25 @@ app.post('/api/auth/register', async (req, res) => {
     }
     
     // Check if user exists
-    const [existing] = await pool.execute(
-      'SELECT UserID FROM Users WHERE Email = ?',
+    const existing = await pool.query(
+      'SELECT "userId" FROM users WHERE email = $1',
       [email]
     );
-    
-    if (existing.length > 0) {
+
+    if (existing.rows.length > 0) {
       return res.status(400).json({ error: 'Email already registered' });
     }
-    
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     // Generate user ID
     const userId = 'user_' + Date.now();
-    
+
     // Insert user
-    await pool.execute(
-      `INSERT INTO Users (UserID, DisplayName, Email, Password, Language, Country, Status) 
-       VALUES (?, ?, ?, ?, ?, ?, 'active')`,
+    await pool.query(
+      `INSERT INTO users ("userId", "displayName", email, password, language, country, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'active')`,
       [userId, displayName, email, hashedPassword, language || 'en', country || 'Thailand']
     );
     
@@ -199,16 +196,16 @@ app.post('/api/auth/login', async (req, res) => {
     }
     
     // Get user
-    const [users] = await pool.execute(
-      'SELECT * FROM Users WHERE Email = ?',
+    const users = await pool.query(
+      'SELECT * FROM users WHERE email = $1',
       [email]
     );
-    
-    if (users.length === 0) {
+
+    if (users.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    
-    const user = users[0];
+
+    const user = users.rows[0];
     
     // Check password
     const validPassword = await bcrypt.compare(password, user.Password);
@@ -248,16 +245,16 @@ app.post('/api/auth/login', async (req, res) => {
 // Get user profile
 app.get('/api/auth/profile', authenticateToken, async (req, res) => {
   try {
-    const [users] = await pool.execute(
-      'SELECT UserID, DisplayName, Email, Country, Language, Status FROM Users WHERE UserID = ?',
+    const users = await pool.query(
+      'SELECT "userId", "displayName", email, country, language, status FROM users WHERE "userId" = $1',
       [req.user.userId]
     );
-    
-    if (users.length === 0) {
+
+    if (users.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
-    res.json(users[0]);
+
+    res.json(users.rows[0]);
   } catch (error) {
     console.error('Profile error:', error);
     res.status(500).json({ error: 'Failed to fetch profile' });
