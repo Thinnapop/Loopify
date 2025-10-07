@@ -303,7 +303,7 @@ interface LoginPageProps {
   onRegisterClick?: () => void;
 }
 
-const API_URL = `${API_BASE_URL || 'http://localhost:5001'}/api`;
+const API_URL = `${API_BASE_URL}/api`;
 
 const LoginPage: React.FC<LoginPageProps> = ({ onBackClick, onLoginSuccess, onRegisterClick }) => {
   const [email, setEmail] = useState('');

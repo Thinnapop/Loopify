@@ -269,7 +269,7 @@ interface FormData {
   language: string;
 }
 
-const API_URL = `${API_BASE_URL || 'http://localhost:5001'}/api`;
+const API_URL = `${API_BASE_URL}/api`;
 
 export default function RegistPage({ onBackClick = () => {}, onRegistrationSuccess = () => {} }: RegistPageProps) {
   const [formData, setFormData] = useState<FormData>({
