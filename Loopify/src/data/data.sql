@@ -246,9 +246,8 @@ INSERT INTO Track (TrackID, Title, DurationMs, ExplicitFlag, ReleaseDate, Genre,
 ('track_006', 'One Dance', 174000, false, '2016-04-05', 'Hip-Hop', 'Views', 'https://example.com/cover6.jpg'),
 ('track_007', 'Believer', 204000, false, '2017-02-01', 'Rock', 'Evolve', 'https://example.com/cover7.jpg'),
 ('track_008', 'Levitating', 203000, false, '2020-03-27', 'Pop', 'Future Nostalgia', 'https://example.com/cover8.jpg'),
-('track_009', 'Circles', 215000, false, '2019-08-30', 'Pop', 'Hollywood\'s Bleeding', 'https://example.com/cover9.jpg'),
+('track_009', 'Circles', 215000, false, '2019-08-30', 'Pop', 'Hollywood Bleeding', 'https://example.com/cover9.jpg'),
 ('track_010', 'Memories', 189000, false, '2019-09-20', 'Pop', 'JORDI', 'https://example.com/cover10.jpg'),
--- New releases for alert testing
 ('track_011', 'New Dawn', 195000, false, '2025-09-25', 'Pop', 'Latest Album', 'https://example.com/cover11.jpg'),
 ('track_012', 'Midnight Dreams', 210000, false, '2025-09-26', 'Pop', 'New Single', 'https://example.com/cover12.jpg');
 

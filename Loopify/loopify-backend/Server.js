@@ -114,6 +114,45 @@ app.get('/api/test/users', async (req, res) => {
     });
   }
 });
+// Add RIGHT AFTER your existing test endpoints (around line 100)
+
+app.get('/api/test/track-columns', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_name = 'track'
+      ORDER BY ordinal_position
+    `);
+    res.json({ 
+      columns: result.rows
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      error: error.message
+    });
+  }
+});
+
+app.get('/api/test/sample-track', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM track LIMIT 1');
+    if (result.rows.length > 0) {
+      res.json({ 
+        success: true,
+        columnNames: Object.keys(result.rows[0]),
+        sampleData: result.rows[0]
+      });
+    } else {
+      res.json({ success: false, message: 'No tracks found' });
+    }
+  } catch (error) {
+    res.status(500).json({ 
+      error: error.message,
+      code: error.code
+    });
+  }
+});
 
 // ==================== AUTH ROUTES ====================
 app.post('/api/auth/register', async (req, res) => {
@@ -126,7 +165,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
     
     const existing = await pool.query(
-      'SELECT "userId" FROM users WHERE email = $1',
+      'SELECT "userid" FROM users WHERE email = $1',
       [email]
     );
 
@@ -138,7 +177,7 @@ app.post('/api/auth/register', async (req, res) => {
     const userId = 'user_' + Date.now();
 
     await pool.query(
-      `INSERT INTO users ("userId", "displayName", email, password, language, country, status)
+      `INSERT INTO users ("userid", "displayname", email, password, language, country, status)
        VALUES ($1, $2, $3, $4, $5, $6, 'active')`,
       [userId, displayName, email, hashedPassword, language || 'en', country || 'Thailand']
     );
@@ -181,7 +220,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
     
     const token = jwt.sign(
-      { userId: user.userId, email: user.email },
+      { userId: user.userid, email: user.email },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -192,8 +231,8 @@ app.post('/api/auth/login', async (req, res) => {
       success: true,
       token,
       user: {
-        userId: user.userId,
-        displayName: user.displayName,
+        userId: user.userid,
+        displayName: user.displayname,
         email: user.email,
         country: user.country,
         language: user.language
@@ -208,7 +247,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/profile', authenticateToken, async (req, res) => {
   try {
     const users = await pool.query(
-      'SELECT "userId", "displayName", email, country, language, status FROM users WHERE "userId" = $1',
+      'SELECT "userid", "displayname", email, country, language, status FROM users WHERE "userid" = $1',
       [req.user.userId]
     );
 
@@ -231,10 +270,10 @@ app.get('/api/songs/trending', async (req, res) => {
     const offset = (page - 1) * limit;
 
     const countResult = await pool.query(`
-      SELECT COUNT(DISTINCT t."TrackID") as total
-      FROM "Track" t
-      JOIN "ArtistTrack" at ON t."TrackID" = at."TrackID"
-      JOIN "Artist" a ON at."ArtistID" = a."ArtistID"
+      SELECT COUNT(DISTINCT t."trackid") as total
+      FROM track t
+      JOIN artisttrack at ON t."trackid" = at."trackid"
+      JOIN artist a ON at."artistid" = a."artistid"
     `);
     
     const total = countResult.rows[0].total;
@@ -242,20 +281,20 @@ app.get('/api/songs/trending', async (req, res) => {
 
     const tracks = await pool.query(`
       SELECT 
-        t."TrackID" as id,
-        t."Title" as title,
-        a."Name" as artist_name,
-        t."CoverURL" as cover_image_url,
-        t."DurationMs" as duration,
-        t."Album" as album,
-        t."Genre" as genre,
-        COALESCE(SUM(uts."PlayCount"), 0) as play_count
-      FROM "Track" t
-      JOIN "ArtistTrack" at ON t."TrackID" = at."TrackID"
-      JOIN "Artist" a ON at."ArtistID" = a."ArtistID"
-      LEFT JOIN "UserTrackStat" uts ON t."TrackID" = uts."TrackID"
-      GROUP BY t."TrackID", t."Title", a."Name", t."CoverURL", t."DurationMs", t."Album", t."Genre"
-      ORDER BY play_count DESC, t."ReleaseDate" DESC
+        t."trackid" as id,
+        t."title" as title,
+        a."name" as artist_name,
+        t."coverurl" as cover_image_url,
+        t."durationms" as duration,
+        t."album" as album,
+        t."genre" as genre,
+        COALESCE(SUM(uts."playcount"), 0) as play_count
+      FROM track t
+      JOIN artisttrack at ON t."trackid" = at."trackid"
+      JOIN artist a ON at."artistid" = a."artistid"
+      LEFT JOIN usertrackstat uts ON t."trackid" = uts."trackid"
+      GROUP BY t."trackid", t."title", a."name", t."coverurl", t."durationms", t."album", t."genre"
+      ORDER BY play_count DESC, t."releasedate" DESC
       LIMIT $1 OFFSET $2
     `, [limit, offset]);
     
@@ -290,16 +329,16 @@ app.post('/api/songs/:songId/play', async (req, res) => {
           const user = jwt.verify(token, JWT_SECRET);
           
           await pool.query(`
-            INSERT INTO "UserTrackStat" ("UserID", "TrackID", "PlayCount", "LastEventAt") 
+            INSERT INTO usertrackstat ("userid", "trackid", "playcount", "lasteventat") 
             VALUES ($1, $2, 1, NOW())
-            ON CONFLICT ("UserID", "TrackID") 
+            ON CONFLICT ("userid", "trackid") 
             DO UPDATE SET 
-              "PlayCount" = "UserTrackStat"."PlayCount" + 1, 
-              "LastEventAt" = NOW()
+              "playcount" = usertrackstat."playcount" + 1, 
+              "lasteventat" = NOW()
           `, [user.userId, songId]);
           
           await pool.query(`
-            INSERT INTO "Listening" ("UserID", "TrackID", "Device") 
+            INSERT INTO listening ("userid", "trackid", "device") 
             VALUES ($1, $2, 'web')
           `, [user.userId, songId]);
         } catch (jwtError) {
@@ -322,20 +361,20 @@ app.get('/api/artists/popular', async (req, res) => {
     const limit = parseInt(req.query.limit) || 5;
     const offset = (page - 1) * limit;
 
-    const countResult = await pool.query('SELECT COUNT(*) as total FROM "Artist"');
+    const countResult = await pool.query('SELECT COUNT(*) as total FROM artist');
     const total = countResult.rows[0].total;
     const totalPages = Math.ceil(total / limit);
 
     const artists = await pool.query(`
       SELECT 
-        "ArtistID" as id,
-        "Name" as name,
-        "Country" as country,
-        "Followers" as followers_count,
-        "ImageURL" as avatar_url,
-        "ArtistType" as type
-      FROM "Artist"
-      ORDER BY "Followers" DESC
+        "artistid" as id,
+        "name" as name,
+        "country" as country,
+        "followers" as followers_count,
+        "imageurl" as avatar_url,
+        "artisttype" as type
+      FROM artist
+      ORDER BY "followers" DESC
       LIMIT $1 OFFSET $2
     `, [limit, offset]);
     
@@ -364,13 +403,13 @@ app.post('/api/artists/:artistId/follow', authenticateToken, async (req, res) =>
     
     if (action === 'follow') {
       await pool.query(
-        'INSERT INTO "UserArtistFollow" ("UserID", "ArtistID", "AlertEnabled") VALUES ($1, $2, true)',
+        'INSERT INTO userartistfollow ("userid", "artistid", "alertenabled") VALUES ($1, $2, true)',
         [req.user.userId, artistId]
       );
       res.json({ message: 'Artist followed successfully' });
     } else {
       await pool.query(
-        'DELETE FROM "UserArtistFollow" WHERE "UserID" = $1 AND "ArtistID" = $2',
+        'DELETE FROM userartistfollow WHERE "userid" = $1 AND "artistid" = $2',
         [req.user.userId, artistId]
       );
       res.json({ message: 'Artist unfollowed successfully' });
@@ -386,19 +425,19 @@ app.get('/api/playlists/collaborative', authenticateToken, async (req, res) => {
   try {
     const query = `
       SELECT 
-        p."PlaylistID" as "playlistId",
-        p."Title" as title,
-        p."Description" as description,
-        p."Visibility" as visibility,
-        pm."Role" as "userRole",
-        COUNT(DISTINCT pm2."UserID") as "memberCount",
-        COUNT(DISTINCT pi."TrackID") as "trackCount"
-      FROM "Playlist" p
-      JOIN "PlaylistMember" pm ON p."PlaylistID" = pm."PlaylistID"
-      LEFT JOIN "PlaylistMember" pm2 ON p."PlaylistID" = pm2."PlaylistID"
-      LEFT JOIN "PlaylistItem" pi ON p."PlaylistID" = pi."PlaylistID"
-      WHERE pm."UserID" = $1 AND p."Visibility" IN ('shared', 'public')
-      GROUP BY p."PlaylistID", p."Title", p."Description", p."Visibility", pm."Role"
+        p."playlistid" as "playlistId",
+        p."title" as title,
+        p."description" as description,
+        p."visibility" as visibility,
+        pm."role" as "userRole",
+        COUNT(DISTINCT pm2."userid") as "memberCount",
+        COUNT(DISTINCT pi."trackid") as "trackCount"
+      FROM playlist p
+      JOIN playlistmember pm ON p."playlistid" = pm."playlistid"
+      LEFT JOIN playlistmember pm2 ON p."playlistid" = pm2."playlistid"
+      LEFT JOIN playlistitem pi ON p."playlistid" = pi."playlistid"
+      WHERE pm."userid" = $1 AND p."visibility" IN ('shared', 'public')
+      GROUP BY p."playlistid", p."title", p."description", p."visibility", pm."role"
     `;
     
     const playlists = await pool.query(query, [req.user.userId]);
@@ -415,18 +454,18 @@ app.get('/api/playlists/user', authenticateToken, async (req, res) => {
     
     const query = `
       SELECT 
-        p."PlaylistID" as "playlistId",
-        p."Title" as title,
-        p."Description" as description,
-        p."Visibility" as visibility,
-        pm."Role" as role,
-        COUNT(DISTINCT pi."TrackID") as "trackCount"
-      FROM "Playlist" p
-      JOIN "PlaylistMember" pm ON p."PlaylistID" = pm."PlaylistID"
-      LEFT JOIN "PlaylistItem" pi ON p."PlaylistID" = pi."PlaylistID"
-      WHERE pm."UserID" = $1
-      GROUP BY p."PlaylistID", p."Title", p."Description", p."Visibility", pm."Role"
-      ORDER BY p."CreatedAt" DESC
+        p."playlistid" as "playlistId",
+        p."title" as title,
+        p."description" as description,
+        p."visibility" as visibility,
+        pm."role" as role,
+        COUNT(DISTINCT pi."trackid") as "trackCount"
+      FROM playlist p
+      JOIN playlistmember pm ON p."playlistid" = pm."playlistid"
+      LEFT JOIN playlistitem pi ON p."playlistid" = pi."playlistid"
+      WHERE pm."userid" = $1
+      GROUP BY p."playlistid", p."title", p."description", p."visibility", pm."role"
+      ORDER BY p."createdat" DESC
     `;
     
     const playlists = await pool.query(query, [req.user.userId]);
@@ -446,7 +485,7 @@ app.get('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
     console.log('🔍 Fetching playlist:', playlistId);
     
     const playlists = await pool.query(
-      'SELECT * FROM "Playlist" WHERE "PlaylistID" = $1',
+      'SELECT * FROM playlist WHERE "playlistid" = $1',
       [playlistId]
     );
     
@@ -455,39 +494,39 @@ app.get('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Playlist not found' });
     }
     
-    console.log('✅ Playlist found:', playlists.rows[0].Title);
+    console.log('✅ Playlist found:', playlists.rows[0].title);
     
     const memberRole = await pool.query(
-      'SELECT "Role" FROM "PlaylistMember" WHERE "PlaylistID" = $1 AND "UserID" = $2',
+      'SELECT "role" FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
       [playlistId, req.user.userId]
     );
     
     const members = await pool.query(
-      `SELECT pm.*, u."displayName", u.email 
-       FROM "PlaylistMember" pm
-       JOIN users u ON pm."UserID" = u."userId"
-       WHERE pm."PlaylistID" = $1`,
+      `SELECT pm.*, u."displayname", u.email 
+       FROM playlistmember pm
+       JOIN users u ON pm."userid" = u."userid"
+       WHERE pm."playlistid" = $1`,
       [playlistId]
     );
     
     const tracks = await pool.query(`
       SELECT 
-        pi."ListItemID",
-        pi."Position",
-        t."TrackID",
-        t."Title",
-        t."DurationMs",
-        t."CoverURL",
-        a."Name" as "ArtistName",
-        u."displayName",
-        pi."AddedAt"
-       FROM "PlaylistItem" pi
-       JOIN "Track" t ON pi."TrackID" = t."TrackID"
-       JOIN "ArtistTrack" at ON t."TrackID" = at."TrackID"
-       JOIN "Artist" a ON at."ArtistID" = a."ArtistID"
-       JOIN users u ON pi."AddedByUserID" = u."userId"
-       WHERE pi."PlaylistID" = $1
-       ORDER BY pi."Position"`,
+        pi."listitemid",
+        pi."position",
+        t."trackid",
+        t."title",
+        t."durationms",
+        t."coverurl",
+        a."name" as "artistname",
+        u."displayname",
+        pi."addedat"
+       FROM playlistitem pi
+       JOIN track t ON pi."trackid" = t."trackid"
+       JOIN artisttrack at ON t."trackid" = at."trackid"
+       JOIN artist a ON at."artistid" = a."artistid"
+       JOIN users u ON pi."addedbyuserid" = u."userid"
+       WHERE pi."playlistid" = $1
+       ORDER BY pi."position"`,
       [playlistId]
     );
     
@@ -496,19 +535,19 @@ app.get('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
     const playlist = playlists.rows[0];
     
     res.json({
-      playlistId: playlist.PlaylistID,
-      title: playlist.Title,
-      description: playlist.Description,
-      visibility: playlist.Visibility,
-      role: memberRole.rows[0]?.Role || 'Viewer',
+      playlistId: playlist.playlistid,
+      title: playlist.title,
+      description: playlist.description,
+      visibility: playlist.visibility,
+      role: memberRole.rows[0]?.role || 'Viewer',
       members: members.rows,
       tracks: tracks.rows.map(t => ({
-        id: t.TrackID,
-        title: t.Title,
-        artist: t.ArtistName,
-        cover: t.CoverURL || `https://picsum.photos/200?random=${t.TrackID}`,
-        duration: formatDuration(t.DurationMs),
-        addedBy: t.displayName
+        id: t.trackid,
+        title: t.title,
+        artist: t.artistname,
+        cover: t.coverurl || `https://picsum.photos/200?random=${t.trackid}`,
+        duration: formatDuration(t.durationms),
+        addedBy: t.displayname
       }))
     });
   } catch (error) {
@@ -525,14 +564,14 @@ app.post('/api/playlists/create', authenticateToken, async (req, res) => {
     console.log('📝 Creating playlist:', title, 'with ID:', playlistId);
     
     await pool.query(
-      `INSERT INTO "Playlist" ("PlaylistID", "Title", "Description", "Visibility", "CreatorID") 
+      `INSERT INTO playlist ("playlistid", "title", "description", "visibility", "creatorid") 
        VALUES ($1, $2, $3, $4, $5)`,
       [playlistId, title, description || '', visibility || 'private', req.user.userId]
     );
     
     await pool.query(
-      `INSERT INTO "PlaylistMember" ("PlaylistID", "UserID", "Role") 
-       VALUES ($1, $2, 'Owner')`,
+      `INSERT INTO playlistmember ("playlistid", "userid", "role") 
+       VALUES ($1, $2, 'owner')`,
       [playlistId, req.user.userId]
     );
     
@@ -559,16 +598,16 @@ app.post('/api/playlists/:playlistId/tracks', authenticateToken, async (req, res
     console.log('➕ Adding track:', trackId, 'to playlist:', playlistId);
     
     const member = await pool.query(
-      'SELECT "Role" FROM "PlaylistMember" WHERE "PlaylistID" = $1 AND "UserID" = $2',
+      'SELECT "role" FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
       [playlistId, req.user.userId]
     );
     
-    if (member.rows.length === 0 || member.rows[0].Role === 'Viewer') {
+    if (member.rows.length === 0 || member.rows[0].role === 'viewer') {
       return res.status(403).json({ error: 'No permission to add tracks' });
     }
     
     const existing = await pool.query(
-      'SELECT * FROM "PlaylistItem" WHERE "PlaylistID" = $1 AND "TrackID" = $2',
+      'SELECT * FROM playlistitem WHERE "playlistid" = $1 AND "trackid" = $2',
       [playlistId, trackId]
     );
     
@@ -577,15 +616,15 @@ app.post('/api/playlists/:playlistId/tracks', authenticateToken, async (req, res
     }
     
     const maxPos = await pool.query(
-      'SELECT MAX("Position") as "maxPos" FROM "PlaylistItem" WHERE "PlaylistID" = $1',
+      'SELECT MAX("position") as "maxpos" FROM playlistitem WHERE "playlistid" = $1',
       [playlistId]
     );
     
-    const position = (maxPos.rows[0].maxPos || 0) + 1;
+    const position = (maxPos.rows[0].maxpos || 0) + 1;
     const itemId = 'item_' + Date.now();
     
     await pool.query(
-      `INSERT INTO "PlaylistItem" ("ListItemID", "PlaylistID", "TrackID", "AddedByUserID", "Position") 
+      `INSERT INTO playlistitem ("listitemid", "playlistid", "trackid", "addedbyuserid", "position") 
        VALUES ($1, $2, $3, $4, $5)`,
       [itemId, playlistId, trackId, req.user.userId, position]
     );
@@ -603,16 +642,16 @@ app.delete('/api/playlists/:playlistId/tracks/:trackId', authenticateToken, asyn
     const { playlistId, trackId } = req.params;
     
     const member = await pool.query(
-      'SELECT "Role" FROM "PlaylistMember" WHERE "PlaylistID" = $1 AND "UserID" = $2',
+      'SELECT "role" FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
       [playlistId, req.user.userId]
     );
     
-    if (member.rows.length === 0 || member.rows[0].Role === 'Viewer') {
+    if (member.rows.length === 0 || member.rows[0].role === 'viewer') {
       return res.status(403).json({ error: 'No permission to remove tracks' });
     }
     
     await pool.query(
-      'DELETE FROM "PlaylistItem" WHERE "PlaylistID" = $1 AND "TrackID" = $2',
+      'DELETE FROM playlistitem WHERE "playlistid" = $1 AND "trackid" = $2',
       [playlistId, trackId]
     );
     
@@ -628,19 +667,19 @@ app.get('/api/alerts/pending', authenticateToken, async (req, res) => {
   try {
     const query = `
       SELECT 
-        a."AlertID",
-        a."Channel",
-        a."State",
-        a."CreatedAt",
-        t."Title" as "TrackTitle",
-        t."CoverURL",
-        ar."Name" as "ArtistName"
-      FROM "Alert" a
-      JOIN "Track" t ON a."TrackID" = t."TrackID"
-      JOIN "ArtistTrack" at ON t."TrackID" = at."TrackID"
-      JOIN "Artist" ar ON at."ArtistID" = ar."ArtistID"
-      WHERE a."UserID" = $1 AND a."State" = 'queued'
-      ORDER BY a."CreatedAt" DESC
+        a."alertid",
+        a."channel",
+        a."state",
+        a."createdat",
+        t."title" as "tracktitle",
+        t."coverurl",
+        ar."name" as "artistname"
+      FROM alert a
+      JOIN track t ON a."trackid" = t."trackid"
+      JOIN artisttrack at ON t."trackid" = at."trackid"
+      JOIN artist ar ON at."artistid" = ar."artistid"
+      WHERE a."userid" = $1 AND a."state" = 'queued'
+      ORDER BY a."createdat" DESC
     `;
     
     const alerts = await pool.query(query, [req.user.userId]);
@@ -654,8 +693,8 @@ app.get('/api/alerts/pending', authenticateToken, async (req, res) => {
 app.put('/api/alerts/:alertId/read', authenticateToken, async (req, res) => {
   try {
     await pool.query(
-      `UPDATE "Alert" SET "State" = 'sent', "DeliveredAt" = NOW() 
-       WHERE "AlertID" = $1 AND "UserID" = $2`,
+      `UPDATE alert SET "state" = 'sent', "deliveredat" = NOW() 
+       WHERE "alertid" = $1 AND "userid" = $2`,
       [req.params.alertId, req.user.userId]
     );
     res.json({ message: 'Alert marked as read' });
@@ -670,17 +709,17 @@ app.get('/api/tracks/trending', async (req, res) => {
   try {
     const query = `
       SELECT 
-        t."TrackID" as id,
-        t."Title" as title,
-        a."Name" as artist,
-        t."DurationMs" as duration,
-        t."CoverURL" as cover,
-        t."Album" as album,
-        t."Genre" as genre
-      FROM "Track" t
-      JOIN "ArtistTrack" at ON t."TrackID" = at."TrackID"
-      JOIN "Artist" a ON at."ArtistID" = a."ArtistID"
-      ORDER BY t."ReleaseDate" DESC
+        t."trackid" as id,
+        t."title" as title,
+        a."name" as artist,
+        t."durationms" as duration,
+        t."coverurl" as cover,
+        t."album" as album,
+        t."genre" as genre
+      FROM track t
+      JOIN artisttrack at ON t."trackid" = at."trackid"
+      JOIN artist a ON at."artistid" = a."artistid"
+      ORDER BY t."releasedate" DESC
       LIMIT 20
     `;
     
@@ -697,6 +736,7 @@ app.get('/api/tracks/trending', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch trending tracks' });
   }
 });
+
 // Root route for testing
 app.get('/', (req, res) => {
   res.json({
@@ -710,6 +750,7 @@ app.get('/', (req, res) => {
     }
   });
 });
+
 // ==================== START SERVER ====================
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
