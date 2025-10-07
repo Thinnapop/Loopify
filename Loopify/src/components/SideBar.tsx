@@ -266,7 +266,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser,onPlaylistClick }) => {
         },
         body: JSON.stringify({
           title: newPlaylistTitle,
-          visibility: 'Private'
+          visibility: 'private'
         })
       });
 
