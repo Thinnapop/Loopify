@@ -8,7 +8,7 @@ require('dotenv').config();
 
 const app = express();
 
-// CORS configuration - MUST BE FIRST
+// CORS configuration
 const corsOptions = {
   origin: [
     'http://localhost:5175',
@@ -28,7 +28,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// Create PostgreSQL connection pool
+// PostgreSQL connection pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
@@ -39,13 +39,9 @@ const pool = new Pool({
 
 // Test database connection
 pool.connect()
-  .then(() => {
-    console.log('✅ Connected to PostgreSQL database successfully');
-  })
+  .then(() => console.log('✅ Connected to PostgreSQL database successfully'))
   .catch(err => {
-    console.error('❌ Database connection failed:');
-    console.error('Error code:', err.code);
-    console.error('Error message:', err.message);
+    console.error('❌ Database connection failed:', err.code, err.message);
   });
 
 // JWT Secret
@@ -60,12 +56,8 @@ function formatDuration(ms) {
 }
 
 function formatFollowers(count) {
-  if (count >= 1000000) {
-    return `${Math.floor(count / 1000000)}M followers`;
-  }
-  if (count >= 1000) {
-    return `${Math.floor(count / 1000)}K followers`;
-  }
+  if (count >= 1000000) return `${Math.floor(count / 1000000)}M followers`;
+  if (count >= 1000) return `${Math.floor(count / 1000)}K followers`;
   return `${count} followers`;
 }
 
@@ -88,7 +80,6 @@ const authenticateToken = (req, res, next) => {
 };
 
 // ==================== TEST ENDPOINTS ====================
-// Test endpoint to check database
 app.get('/api/test/db', async (req, res) => {
   try {
     const result = await pool.query('SELECT 1 as test');
@@ -107,7 +98,6 @@ app.get('/api/test/db', async (req, res) => {
   }
 });
 
-// Test endpoint to check if users table exists
 app.get('/api/test/users', async (req, res) => {
   try {
     const result = await pool.query('SELECT COUNT(*) as count FROM users');
@@ -120,14 +110,12 @@ app.get('/api/test/users', async (req, res) => {
     res.status(500).json({
       error: 'Users table not found or accessible',
       details: error.message,
-      code: error.code,
       hint: 'Run the PostgreSQL schema in your database'
     });
   }
 });
 
 // ==================== AUTH ROUTES ====================
-// Register
 app.post('/api/auth/register', async (req, res) => {
   console.log('Register attempt:', req.body.email);
   try {
@@ -162,24 +150,14 @@ app.post('/api/auth/register', async (req, res) => {
     res.json({
       success: true,
       token,
-      user: {
-        userId,
-        displayName,
-        email,
-        country,
-        language
-      }
+      user: { userId, displayName, email, country, language }
     });
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({ 
-      error: 'Registration failed',
-      details: error.message 
-    });
+    res.status(500).json({ error: 'Registration failed', details: error.message });
   }
 });
 
-// Login
 app.post('/api/auth/login', async (req, res) => {
   console.log('Login attempt:', req.body.email);
   try {
@@ -189,10 +167,7 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password required' });
     }
     
-    const users = await pool.query(
-      'SELECT * FROM users WHERE email = $1',
-      [email]
-    );
+    const users = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
 
     if (users.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -226,14 +201,10 @@ app.post('/api/auth/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ 
-      error: 'Login failed',
-      details: error.message 
-    });
+    res.status(500).json({ error: 'Login failed', details: error.message });
   }
 });
 
-// Get user profile
 app.get('/api/auth/profile', authenticateToken, async (req, res) => {
   try {
     const users = await pool.query(
@@ -253,14 +224,12 @@ app.get('/api/auth/profile', authenticateToken, async (req, res) => {
 });
 
 // ==================== SONGS ROUTES ====================
-// Get trending songs
 app.get('/api/songs/trending', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 5;
     const offset = (page - 1) * limit;
 
-    // Get total count for pagination
     const countResult = await pool.query(`
       SELECT COUNT(DISTINCT t."TrackID") as total
       FROM "Track" t
@@ -271,7 +240,6 @@ app.get('/api/songs/trending', async (req, res) => {
     const total = countResult.rows[0].total;
     const totalPages = Math.ceil(total / limit);
 
-    // Get trending tracks with pagination
     const tracks = await pool.query(`
       SELECT 
         t."TrackID" as id,
@@ -309,7 +277,6 @@ app.get('/api/songs/trending', async (req, res) => {
   }
 });
 
-// Track song play
 app.post('/api/songs/:songId/play', async (req, res) => {
   try {
     const { songId } = req.params;
@@ -349,7 +316,6 @@ app.post('/api/songs/:songId/play', async (req, res) => {
 });
 
 // ==================== ARTISTS ROUTES ====================
-// Get popular artists
 app.get('/api/artists/popular', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -391,7 +357,6 @@ app.get('/api/artists/popular', async (req, res) => {
   }
 });
 
-// Follow/Unfollow artist
 app.post('/api/artists/:artistId/follow', authenticateToken, async (req, res) => {
   try {
     const { artistId } = req.params;
@@ -416,8 +381,7 @@ app.post('/api/artists/:artistId/follow', authenticateToken, async (req, res) =>
   }
 });
 
-// ==================== COLLABORATIVE PLAYLIST ROUTES ====================
-// Get user's collaborative playlists
+// ==================== PLAYLIST ROUTES ====================
 app.get('/api/playlists/collaborative', authenticateToken, async (req, res) => {
   try {
     const query = `
@@ -445,67 +409,6 @@ app.get('/api/playlists/collaborative', authenticateToken, async (req, res) => {
   }
 });
 
-// Create collaborative playlist
-app.post('/api/playlists/create', authenticateToken, async (req, res) => {
-  try {
-    const { title, description, visibility } = req.body;
-    const playlistId = 'playlist_' + Date.now();
-    
-    await pool.query(
-      `INSERT INTO "Playlist" ("PlaylistID", "Title", "Description", "Visibility", "CreatorID") 
-       VALUES ($1, $2, $3, $4, $5)`,
-      [playlistId, title, description, visibility || 'shared', req.user.userId]
-    );
-    
-    await pool.query(
-      `INSERT INTO "PlaylistMember" ("PlaylistID", "UserID", "Role") 
-       VALUES ($1, $2, 'owner')`,
-      [playlistId, req.user.userId]
-    );
-    
-    res.json({
-      playlistId,
-      title,
-      description,
-      visibility,
-      message: 'Playlist created successfully'
-    });
-  } catch (error) {
-    console.error('Create playlist error:', error);
-    res.status(500).json({ error: 'Failed to create playlist' });
-  }
-});
-
-// ==================== COLLABORATIVE PLAYLIST ROUTES ====================
-// Get user's collaborative playlists
-app.get('/api/playlists/collaborative', authenticateToken, async (req, res) => {
-  try {
-    const query = `
-      SELECT 
-        p."PlaylistID" as "playlistId",
-        p."Title" as title,
-        p."Description" as description,
-        p."Visibility" as visibility,
-        pm."Role" as "userRole",
-        COUNT(DISTINCT pm2."UserID") as "memberCount",
-        COUNT(DISTINCT pi."TrackID") as "trackCount"
-      FROM "Playlist" p
-      JOIN "PlaylistMember" pm ON p."PlaylistID" = pm."PlaylistID"
-      LEFT JOIN "PlaylistMember" pm2 ON p."PlaylistID" = pm2."PlaylistID"
-      LEFT JOIN "PlaylistItem" pi ON p."PlaylistID" = pi."PlaylistID"
-      WHERE pm."UserID" = $1 AND p."Visibility" IN ('shared', 'public')
-      GROUP BY p."PlaylistID", p."Title", p."Description", p."Visibility", pm."Role"
-    `;
-    
-    const playlists = await pool.query(query, [req.user.userId]);
-    res.json(playlists.rows);
-  } catch (error) {
-    console.error('Collaborative playlists error:', error);
-    res.status(500).json({ error: 'Failed to fetch collaborative playlists' });
-  }
-});
-
-// Get user's playlists (all types)
 app.get('/api/playlists/user', authenticateToken, async (req, res) => {
   try {
     console.log('📚 Fetching playlists for user:', req.user.userId);
@@ -535,34 +438,29 @@ app.get('/api/playlists/user', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch playlists', details: error.message });
   }
 });
-// Get playlist details with tracks and members
+
 app.get('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
   try {
     const { playlistId } = req.params;
     
-    console.log('🔍 DEBUG - Requested playlistId:', playlistId, 'Type:', typeof playlistId);
-    console.log('🔍 DEBUG - User ID:', req.user.userId);
+    console.log('🔍 Fetching playlist:', playlistId);
     
     const playlists = await pool.query(
       'SELECT * FROM "Playlist" WHERE "PlaylistID" = $1',
       [playlistId]
     );
     
-    console.log('🔍 DEBUG - Playlists found:', playlists.rows.length);
-    
     if (playlists.rows.length === 0) {
-      console.log('❌ Playlist not found with ID:', playlistId);
+      console.log('❌ Playlist not found:', playlistId);
       return res.status(404).json({ error: 'Playlist not found' });
     }
     
-    console.log('✅ Playlist found:', playlists.rows[0].PlaylistID, playlists.rows[0].Title);
+    console.log('✅ Playlist found:', playlists.rows[0].Title);
     
     const memberRole = await pool.query(
       'SELECT "Role" FROM "PlaylistMember" WHERE "PlaylistID" = $1 AND "UserID" = $2',
       [playlistId, req.user.userId]
     );
-    
-    console.log('🔍 DEBUG - User role:', memberRole.rows[0]?.Role);
     
     const members = await pool.query(
       `SELECT pm.*, u."displayName", u.email 
@@ -571,8 +469,6 @@ app.get('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
        WHERE pm."PlaylistID" = $1`,
       [playlistId]
     );
-    
-    console.log('🔍 DEBUG - Members count:', members.rows.length);
     
     const tracks = await pool.query(`
       SELECT 
@@ -595,14 +491,11 @@ app.get('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
       [playlistId]
     );
     
-    console.log('🔍 DEBUG - Tracks found:', tracks.rows.length);
-    if (tracks.rows.length > 0) {
-      console.log('🔍 DEBUG - First track:', tracks.rows[0]);
-    }
+    console.log('🎵 Tracks found:', tracks.rows.length);
     
     const playlist = playlists.rows[0];
     
-    const response = {
+    res.json({
       playlistId: playlist.PlaylistID,
       title: playlist.Title,
       description: playlist.Description,
@@ -617,30 +510,24 @@ app.get('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
         duration: formatDuration(t.DurationMs),
         addedBy: t.displayName
       }))
-    };
-    
-    console.log('📦 DEBUG - Response tracks count:', response.tracks.length);
-    
-    res.json(response);
+    });
   } catch (error) {
     console.error('❌ Playlist details error:', error);
-    console.error('Stack:', error.stack);
     res.status(500).json({ error: 'Failed to fetch playlist details' });
   }
 });
 
-// Create collaborative playlist
 app.post('/api/playlists/create', authenticateToken, async (req, res) => {
   try {
     const { title, description, visibility } = req.body;
     const playlistId = 'playlist_' + Date.now();
     
-    console.log('📝 Creating playlist:', title, 'for user:', req.user.userId);
+    console.log('📝 Creating playlist:', title, 'with ID:', playlistId);
     
     await pool.query(
       `INSERT INTO "Playlist" ("PlaylistID", "Title", "Description", "Visibility", "CreatorID") 
        VALUES ($1, $2, $3, $4, $5)`,
-      [playlistId, title, description, visibility || 'private', req.user.userId]
+      [playlistId, title, description || '', visibility || 'private', req.user.userId]
     );
     
     await pool.query(
@@ -649,12 +536,12 @@ app.post('/api/playlists/create', authenticateToken, async (req, res) => {
       [playlistId, req.user.userId]
     );
     
-    console.log('✅ Playlist created:', playlistId);
+    console.log('✅ Playlist created with ID:', playlistId);
     
     res.json({
       playlistId,
       title,
-      description,
+      description: description || '',
       visibility: visibility || 'private',
       message: 'Playlist created successfully'
     });
@@ -664,7 +551,6 @@ app.post('/api/playlists/create', authenticateToken, async (req, res) => {
   }
 });
 
-// Add track to playlist - THIS WAS MISSING!
 app.post('/api/playlists/:playlistId/tracks', authenticateToken, async (req, res) => {
   try {
     const { playlistId } = req.params;
@@ -712,32 +598,6 @@ app.post('/api/playlists/:playlistId/tracks', authenticateToken, async (req, res
   }
 });
 
-// Remove track from playlist
-app.delete('/api/playlists/:playlistId/tracks/:trackId', authenticateToken, async (req, res) => {
-  try {
-    const { playlistId, trackId } = req.params;
-    
-    const member = await pool.query(
-      'SELECT "Role" FROM "PlaylistMember" WHERE "PlaylistID" = $1 AND "UserID" = $2',
-      [playlistId, req.user.userId]
-    );
-    
-    if (member.rows.length === 0 || member.rows[0].Role === 'Viewer') {
-      return res.status(403).json({ error: 'No permission to remove tracks' });
-    }
-    
-    await pool.query(
-      'DELETE FROM "PlaylistItem" WHERE "PlaylistID" = $1 AND "TrackID" = $2',
-      [playlistId, trackId]
-    );
-    
-    res.json({ message: 'Track removed successfully' });
-  } catch (error) {
-    console.error('Remove track error:', error);
-    res.status(500).json({ error: 'Failed to remove track' });
-  }
-});
-// Remove track from playlist - FIXED
 app.delete('/api/playlists/:playlistId/tracks/:trackId', authenticateToken, async (req, res) => {
   try {
     const { playlistId, trackId } = req.params;
@@ -764,7 +624,6 @@ app.delete('/api/playlists/:playlistId/tracks/:trackId', authenticateToken, asyn
 });
 
 // ==================== ALERTS ROUTES ====================
-// Get user's alerts
 app.get('/api/alerts/pending', authenticateToken, async (req, res) => {
   try {
     const query = `
@@ -792,7 +651,6 @@ app.get('/api/alerts/pending', authenticateToken, async (req, res) => {
   }
 });
 
-// Mark alert as read
 app.put('/api/alerts/:alertId/read', authenticateToken, async (req, res) => {
   try {
     await pool.query(
@@ -808,7 +666,6 @@ app.put('/api/alerts/:alertId/read', authenticateToken, async (req, res) => {
 });
 
 // ==================== LEGACY ROUTES ====================
-// Get trending tracks (legacy endpoint)
 app.get('/api/tracks/trending', async (req, res) => {
   try {
     const query = `
@@ -861,11 +718,11 @@ app.listen(PORT, () => {
 🎵 Music endpoints:
    GET  http://localhost:${PORT}/api/songs/trending
    GET  http://localhost:${PORT}/api/artists/popular
-   GET  http://localhost:${PORT}/api/playlists/collaborative
+   GET  http://localhost:${PORT}/api/playlists/user
   `);
 });
 
-// Handle graceful shutdown
+// Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\nShutting down gracefully...');
   await pool.end();
