@@ -15,15 +15,23 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5177';
 
 // CORS configuration - production ready
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL, process.env.PRODUCTION_URL].filter(Boolean)
+  origin: process.env.NODE_ENV === 'production'
+    ? [
+        process.env.FRONTEND_URL,
+        process.env.PRODUCTION_URL,
+        'https://loopify-g41n.onrender.com',  // Your deployed frontend
+        'https://loopify-backend-sshh.onrender.com',  // Your deployed backend
+        'https://thinnapop.github.io'  // Your GitHub Pages URL
+      ].filter(Boolean)
     : [
-        'http://localhost:5175', 
-        'http://localhost:5173', 
+        'http://localhost:5175',
+        'http://localhost:5173',
         'http://localhost:5176',
         'http://localhost:5177',
         'http://127.0.0.1:5175',
-        'http://127.0.0.1:5177'
+        'http://127.0.0.1:5177',
+        'https://loopify-g41n.onrender.com',  // Your deployed frontend
+        'https://loopify-backend-sshh.onrender.com'  // Your deployed backend
       ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

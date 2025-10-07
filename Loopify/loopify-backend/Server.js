@@ -14,7 +14,9 @@ const corsOptions = {
     'http://localhost:5175',
     'http://localhost:5173',
     'http://127.0.0.1:5175',
+    'https://loopify-backend-sshh.onrender.com',  // Your deployed backend (for proxy requests)
     'https://loopify-g41n.onrender.com',  // Your deployed frontend
+    'https://thinnapop.github.io',  // Your GitHub Pages URL
     process.env.FRONTEND_URL  // Production frontend URL
   ].filter(Boolean),
   credentials: true,
