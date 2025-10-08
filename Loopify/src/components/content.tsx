@@ -370,6 +370,40 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
   
   const ITEMS_PER_PAGE = 5;
 
+  // Helper function to import tracks to database
+  const importTracksToDatabase = async (tracks: Song[]) => {
+    try {
+      console.log('📥 Importing tracks to database...');
+      const response = await fetch(`${API_BASE_URL}/api/tracks/import-from-jamendo`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tracks })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Tracks imported successfully:', result.message);
+      } else {
+        console.error('❌ Failed to import tracks:', response.statusText);
+      }
+    } catch (error) {
+      console.error('❌ Import error:', error);
+    }
+  };
+
+  // Helper function to import artists to database
+  const importArtistsToDatabase = async (artists: Artist[]) => {
+    try {
+      console.log('👥 Importing artists to database...');
+      // Note: You might want to add a similar import endpoint for artists in your backend
+      console.log(`📊 Would import ${artists.length} artists to database`);
+    } catch (error) {
+      console.error('❌ Artist import error:', error);
+    }
+  };
+
   useEffect(() => {
     const fetchTracksFromJamendo = async () => {
       try {
@@ -423,7 +457,10 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
         
         console.log('✅ Loaded', jamendoTracks.length, 'Jamendo tracks');
         console.log('Sample track:', jamendoTracks[0]);
-        
+
+        // Import tracks to database for backend API compatibility
+        importTracksToDatabase(jamendoTracks);
+
         setAllTrendingSongs(jamendoTracks);
         
       } catch (error) {
@@ -489,6 +526,10 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
         })) || [];
 
         console.log('Transformed artists:', transformedArtists.length);
+
+        // Import artists to database for backend API compatibility
+        importArtistsToDatabase(transformedArtists);
+
         setAllPopularArtists(transformedArtists);
       } catch (error) {
         console.error('Failed to fetch artists:', error);
