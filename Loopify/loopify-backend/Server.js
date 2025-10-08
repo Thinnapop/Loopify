@@ -611,6 +611,43 @@ app.get('/api/playlists/user', authenticateToken, async (req, res) => {
   }
 });
 
+app.put('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
+  try {
+    const { playlistId } = req.params;
+    const { title, description, visibility } = req.body;
+    
+    console.log('✏️ Updating playlist:', playlistId);
+    
+    // Check if user has permission (owner or editor)
+    const member = await pool.query(
+      'SELECT "role" FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
+      [playlistId, req.user.userId]
+    );
+    
+    if (member.rows.length === 0 || member.rows[0].role === 'viewer') {
+      return res.status(403).json({ error: 'No permission to edit playlist' });
+    }
+    
+    // Update playlist and set updatedat to NOW()
+    await pool.query(
+      `UPDATE playlist 
+       SET "title" = $1, "description" = $2, "visibility" = $3, "updatedat" = NOW()
+       WHERE "playlistid" = $4`,
+      [title, description, visibility, playlistId]
+    );
+    
+    console.log('✅ Playlist updated:', playlistId);
+    
+    res.json({ 
+      success: true,
+      message: 'Playlist updated successfully' 
+    });
+  } catch (error) {
+    console.error('❌ Update playlist error:', error);
+    res.status(500).json({ error: 'Failed to update playlist', details: error.message });
+  }
+});
+
 app.get('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
   try {
     const { playlistId } = req.params;
@@ -694,12 +731,21 @@ app.post('/api/playlists/create', authenticateToken, async (req, res) => {
     const { title, description, visibility } = req.body;
     const playlistId = 'playlist_' + Date.now();
     
-    console.log('📝 Creating playlist:', title, 'with ID:', playlistId);
+    console.log('📝 Creating playlist:', title);
+    
+    // Default to 'private' if no visibility specified
+    const finalVisibility = visibility || 'private';
     
     await pool.query(
-      `INSERT INTO playlist ("playlistid", "title", "description", "visibility", "creatorid") 
-       VALUES ($1, $2, $3, $4, $5)`,
-      [playlistId, title, description || '', visibility || 'private', req.user.userId]
+      `INSERT INTO playlist ("playlistid", "title", "description", "visibility", "creatorid", "createdat", "updatedat") 
+       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
+      [
+        playlistId, 
+        title, 
+        description || '', 
+        finalVisibility,
+        req.user.userId  // Set creator from authenticated user
+      ]
     );
     
     await pool.query(
@@ -708,13 +754,14 @@ app.post('/api/playlists/create', authenticateToken, async (req, res) => {
       [playlistId, req.user.userId]
     );
     
-    console.log('✅ Playlist created with ID:', playlistId);
+    console.log('✅ Playlist created:', playlistId, 'by user:', req.user.userId);
     
     res.json({
       playlistId,
       title,
       description: description || '',
-      visibility: visibility || 'private',
+      visibility: finalVisibility,
+      createdAt: new Date().toISOString(),
       message: 'Playlist created successfully'
     });
   } catch (error) {

@@ -255,7 +255,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser,onPlaylistClick }) => {
       alert('Please enter a playlist name');
       return;
     }
-
+  
     try {
       const token = localStorage.getItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/playlists/create`, {
@@ -266,11 +266,14 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser,onPlaylistClick }) => {
         },
         body: JSON.stringify({
           title: newPlaylistTitle,
-          visibility: 'private'
+          description: '',
+          // Don't send visibility - let backend default to 'private'
         })
       });
-
+  
       if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Playlist created:', data);
         setNewPlaylistTitle('');
         setShowCreateModal(false);
         fetchPlaylists();
