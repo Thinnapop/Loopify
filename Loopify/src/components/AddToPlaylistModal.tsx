@@ -69,15 +69,15 @@ const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({ trackId, onClos
           ) : playlists.length > 0 ? (
             <div className="playlist-list">
               {playlists.map(playlist => (
-                <div 
-                  key={playlist.id} 
-                  className="playlist-option"
-                  onClick={() => handleAddToPlaylist(playlist.id)}
-                >
-                  <span>{playlist.title}</span>
-                  <span className="track-count">{playlist.trackCount} songs</span>
-                </div>
-              ))}
+                  <div 
+                    key={playlist.playlistId}  // ✅ Correct!
+                    className="playlist-option"
+                    onClick={() => handleAddToPlaylist(playlist.playlistId)}  // ✅ Correct!
+                  >
+                    <span>{playlist.title}</span>
+                    <span className="track-count">{playlist.trackCount} songs</span>
+                  </div>
+                ))}
             </div>
           ) : (
             <p>No playlists available. Create one first!</p>
