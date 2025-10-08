@@ -1,12 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../../config';
 
+interface Song {
+  id: number;
+  title: string;
+  artist: string;
+  cover: string;
+  duration?: string;
+  album?: string;
+  audioUrl?: string;
+}
+
 interface AddToPlaylistModalProps {
   trackId: number;
+  trackData: Song;
   onClose: () => void;
 }
 
-const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({ trackId, onClose }) => {
+const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({ trackId, trackData, onClose }) => {
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,14 +52,14 @@ const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({ trackId, onClos
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           trackId,
           trackData: {
-            title: 'Track Title', // We need to pass this from parent
-            artist: 'Artist Name',
-            album: 'Album',
-            cover: 'cover URL',
-            durationInSeconds: 180,
+            title: trackData.title,
+            artist: trackData.artist,
+            album: trackData.album || 'Single',
+            cover: trackData.cover,
+            durationInSeconds: trackData.duration ? parseInt(trackData.duration.split(':')[0]) * 60 + parseInt(trackData.duration.split(':')[1]) : 180,
             genre: 'Various'
           }
         })

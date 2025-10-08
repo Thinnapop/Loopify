@@ -366,6 +366,7 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
   
   const [showAddToPlaylistModal, setShowAddToPlaylistModal] = useState(false);
   const [selectedTrackId, setSelectedTrackId] = useState<number | null>(null);
+  const [selectedTrackData, setSelectedTrackData] = useState<Song | null>(null);
   
   const ITEMS_PER_PAGE = 5;
 
@@ -646,9 +647,10 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
     onArtistSelect(artist);
   };
 
-  const handleAddToPlaylist = (songId: number, e: React.MouseEvent) => {
+  const handleAddToPlaylist = (songId: number, song: Song, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedTrackId(songId);
+    setSelectedTrackData(song);
     setShowAddToPlaylistModal(true);
   };
 
@@ -737,9 +739,9 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
                   >
                     <div className="card-image-container">
                       <img src={song.cover} alt={song.title} />
-                      <button 
+                      <button
                         className="add-to-playlist-btn"
-                        onClick={(e) => handleAddToPlaylist(song.id, e)}
+                        onClick={(e) => handleAddToPlaylist(song.id, song, e)}
                         title="Add to playlist"
                       >
                         +
@@ -830,10 +832,14 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
         </section>
       </div>
 
-      {showAddToPlaylistModal && selectedTrackId && (
+      {showAddToPlaylistModal && selectedTrackId && selectedTrackData && (
         <AddToPlaylistModal
           trackId={selectedTrackId}
-          onClose={() => setShowAddToPlaylistModal(false)}
+          trackData={selectedTrackData}
+          onClose={() => {
+            setShowAddToPlaylistModal(false);
+            setSelectedTrackData(null);
+          }}
         />
       )}
     </>
