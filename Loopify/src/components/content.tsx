@@ -399,7 +399,7 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
         console.log('📥 Importing from Jamendo API...');
         const JAMENDO_CLIENT_ID = 'a287e50a';
         const jamendoResponse = await fetch(
-          `https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=200&boost=popularity_total`
+          `https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=50`
         );
         
         const jamendoData = await jamendoResponse.json();
