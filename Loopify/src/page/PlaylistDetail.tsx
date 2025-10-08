@@ -252,7 +252,7 @@ const handleRemoveMember = async (userId: number) => {
             </div>
 
             <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap'}}>
-            {(playlist?.role === 'Owner' || playlist?.role === 'Editor') && (
+            {(playlist?.role === 'owner' || playlist?.role === 'editor') && (
                 <>
                 <button
                     className="edit-playlist-btn"
