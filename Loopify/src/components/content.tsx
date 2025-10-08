@@ -374,14 +374,14 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
       try {
         setIsLoadingSongs(true);
         
-        // Step 1: Check if we already have tracks in database
-        console.log('📊 Checking database for existing tracks...');
-        const dbCheckResponse = await fetch(`${API_BASE_URL}/api/songs/trending?limit=50`);
+        // Step 1: Check database
+        console.log('📊 Checking database...');
+        const dbCheckResponse = await fetch(`${API_BASE_URL}/api/songs/trending?limit=200`);
         const dbData = await dbCheckResponse.json();
         
-        if (dbData.data && dbData.data.length >= 20) {
-          // We have enough tracks in database, use them!
-          console.log(`✅ Found ${dbData.data.length} tracks in database`);
+        if (dbData.data && dbData.data.length >= 50) {
+          // We have tracks, use them
+          console.log(`✅ Using ${dbData.data.length} tracks from database`);
           const tracks = dbData.data.map((track: any) => ({
             id: track.id,
             title: track.title,
@@ -395,45 +395,37 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
           return;
         }
         
-        // Step 2: Database is empty or has few tracks, import from Jamendo
-        console.log('📥 Database empty, fetching from Jamendo API...');
-        const JAMENDO_CLIENT_ID = 'a287e50a'; // Public test ID
+        // Step 2: Database empty or low tracks, import from Jamendo
+        console.log('📥 Importing from Jamendo API...');
+        const JAMENDO_CLIENT_ID = 'a287e50a';
         const jamendoResponse = await fetch(
           `https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=200&boost=popularity_total`
         );
         
-        if (!jamendoResponse.ok) {
-          throw new Error('Jamendo API failed');
-        }
-        
         const jamendoData = await jamendoResponse.json();
-        console.log(`📦 Fetched ${jamendoData.results?.length || 0} tracks from Jamendo`);
+        console.log(`📦 Got ${jamendoData.results?.length || 0} tracks from Jamendo`);
         
         if (jamendoData.results && jamendoData.results.length > 0) {
-          // Transform Jamendo data
           const tracksToImport = jamendoData.results.map((track: any) => ({
             id: track.id,
             title: track.name,
             artist: track.artist_name,
-            cover: track.album_image || track.image || `https://picsum.photos/300/300?random=${track.id}`,
+            cover: track.album_image || `https://picsum.photos/300/300?random=${track.id}`,
             duration: track.duration,
             album: track.album_name || 'Unknown Album',
-            genre: 'Jamendo'
+            genre: track.musicinfo?.tags?.genres?.[0] || 'Various'
           }));
           
-          // Step 3: Import to database
-          console.log('💾 Importing tracks to database...');
-          const importResponse = await fetch(`${API_BASE_URL}/api/tracks/import-from-jamendo`, {
+          // Import to database
+          console.log('💾 Saving to database...');
+          await fetch(`${API_BASE_URL}/api/tracks/import-from-jamendo`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tracks: tracksToImport })
           });
           
-          const importResult = await importResponse.json();
-          console.log('✅ Import result:', importResult);
-          
-          // Step 4: Fetch from database now that tracks are imported
-          console.log('📊 Fetching tracks from database...');
+          // Fetch from database
+          console.log('📊 Loading from database...');
           const finalResponse = await fetch(`${API_BASE_URL}/api/songs/trending?limit=200`);
           const finalData = await finalResponse.json();
           
@@ -446,25 +438,12 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
             album: track.album
           }));
           
-          console.log(`🎵 Ready! ${finalTracks.length} tracks loaded from database`);
+          console.log(`🎵 Ready! ${finalTracks.length} tracks loaded`);
           setAllTrendingSongs(finalTracks);
         }
         
       } catch (error) {
-        console.error('Failed to fetch/import tracks:', error);
-        // Fallback: use existing database tracks or sample data
-        const fallbackResponse = await fetch(`${API_BASE_URL}/api/songs/trending`);
-        const fallbackData = await fallbackResponse.json();
-        if (fallbackData.data) {
-          setAllTrendingSongs(fallbackData.data.map((track: any) => ({
-            id: track.id,
-            title: track.title,
-            artist: track.artist_name,
-            cover: track.cover_image_url,
-            duration: track.duration,
-            album: track.album
-          })));
-        }
+        console.error('Error:', error);
       } finally {
         setIsLoadingSongs(false);
       }
