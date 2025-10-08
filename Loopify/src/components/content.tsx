@@ -370,182 +370,107 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
   const ITEMS_PER_PAGE = 5;
 
   useEffect(() => {
-    const fetchTracks = async () => {
+    const fetchAndImportTracks = async () => {
       try {
         setIsLoadingSongs(true);
-        // Jamendo API requires a client ID - get yours from https://developer.jamendo.com/
-        const JAMENDO_CLIENT_ID = import.meta.env.VITE_JAMENDO_CLIENT_ID || 'aba8b95b';
-
-        console.log('Fetching tracks with Client ID:', JAMENDO_CLIENT_ID);
-
-        // First, let's test if the Client ID works at all
-        try {
-          const testResponse = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=1`);
-          console.log('Test API response status:', testResponse.status);
-          if (testResponse.ok) {
-            const testData = await testResponse.json();
-            console.log('Test API works! Sample result:', testData.results?.[0]);
-          }
-        } catch (error) {
-          console.log('Test API failed:', error);
-        }
-
-        // Also test with a known working public Client ID
-        try {
-          console.log('Testing with public Client ID...');
-          const publicResponse = await fetch('https://api.jamendo.com/v3.0/tracks/?client_id=a287e50a&format=json&limit=1');
-          console.log('Public Client ID response status:', publicResponse.status);
-          if (publicResponse.ok) {
-            const publicData = await publicResponse.json();
-            console.log('Public Client ID works! Sample result:', publicData.results?.[0]);
-          }
-        } catch (error) {
-          console.log('Public Client ID test failed:', error);
-        }
-
-        // Try multiple approaches to get tracks data
-        let jamendoData: any = { results: [] };
-
-        // Approach 1: Simple tracks request
-        try {
-          const response = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=200`);
-          console.log('Simple tracks API response status:', response.status);
-
-          if (response.ok) {
-            jamendoData = await response.json();
-            console.log('Simple tracks data results length:', jamendoData.results?.length);
-          }
-        } catch (error) {
-          console.log('Simple approach failed:', error);
-        }
-
-        // Approach 2: If no results, try with different parameters
-        if (!jamendoData.results || jamendoData.results.length === 0) {
-          console.log('No tracks found with simple approach, trying with boost...');
-          try {
-            const response2 = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=200&boost=popularity_total`);
-            if (response2.ok) {
-              const data2 = await response2.json();
-              if (data2.results && data2.results.length > 0) {
-                jamendoData = data2;
-                console.log('Boost approach results length:', jamendoData.results?.length);
-              }
-            }
-          } catch (error) {
-            console.log('Boost approach failed:', error);
-          }
-        }
-
-        // Approach 3: If still no results, try a smaller limit
-        if (!jamendoData.results || jamendoData.results.length === 0) {
-          console.log('No tracks found, trying with limit=50...');
-          try {
-            const response3 = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=50`);
-            if (response3.ok) {
-              const data3 = await response3.json();
-              if (data3.results && data3.results.length > 0) {
-                jamendoData = data3;
-                console.log('Limit=50 approach results length:', jamendoData.results?.length);
-              }
-            }
-          } catch (error) {
-            console.log('Limit=50 approach failed:', error);
-          }
-        }
-
-        // Approach 4: If still no results, try with public Client ID
-        if (!jamendoData.results || jamendoData.results.length === 0) {
-          console.log('No tracks found with your Client ID, trying with public Client ID...');
-          try {
-            const response4 = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=a287e50a&format=json&limit=200`);
-            if (response4.ok) {
-              const data4 = await response4.json();
-              if (data4.results && data4.results.length > 0) {
-                jamendoData = data4;
-                console.log('Public Client ID approach results length:', jamendoData.results?.length);
-              }
-            }
-          } catch (error) {
-            console.log('Public Client ID approach failed:', error);
-          }
-        }
-
-        console.log('Final Jamendo tracks data:', jamendoData);
-        console.log('Final results length:', jamendoData.results?.length);
-
-        // Transform Jamendo data to match our Song interface
-        const tracksWithProxy = jamendoData.results?.map((track: any) => ({
-          id: track.id,
-          title: track.name,
-          artist: track.artist_name,
-          cover: track.album_image || track.image || 'https://picsum.photos/300/300?random=' + track.id,
-          duration: track.duration ? `${Math.floor(track.duration / 60)}:${(track.duration % 60).toString().padStart(2, '0')}` : undefined,
-          album: track.album_name,
-          audioUrl: track.audio || '#'
-        })) || [];
-
-        console.log('Final transformed tracks:', tracksWithProxy.length);
-        console.log('Sample track:', tracksWithProxy[0]);
         
-        setAllTrendingSongs(tracksWithProxy);
+        // Step 1: Check if we already have tracks in database
+        console.log('📊 Checking database for existing tracks...');
+        const dbCheckResponse = await fetch(`${API_BASE_URL}/api/songs/trending?limit=50`);
+        const dbData = await dbCheckResponse.json();
+        
+        if (dbData.data && dbData.data.length >= 20) {
+          // We have enough tracks in database, use them!
+          console.log(`✅ Found ${dbData.data.length} tracks in database`);
+          const tracks = dbData.data.map((track: any) => ({
+            id: track.id,
+            title: track.title,
+            artist: track.artist_name,
+            cover: track.cover_image_url,
+            duration: track.duration,
+            album: track.album
+          }));
+          setAllTrendingSongs(tracks);
+          setIsLoadingSongs(false);
+          return;
+        }
+        
+        // Step 2: Database is empty or has few tracks, import from Jamendo
+        console.log('📥 Database empty, fetching from Jamendo API...');
+        const JAMENDO_CLIENT_ID = 'a287e50a'; // Public test ID
+        const jamendoResponse = await fetch(
+          `https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=200&boost=popularity_total`
+        );
+        
+        if (!jamendoResponse.ok) {
+          throw new Error('Jamendo API failed');
+        }
+        
+        const jamendoData = await jamendoResponse.json();
+        console.log(`📦 Fetched ${jamendoData.results?.length || 0} tracks from Jamendo`);
+        
+        if (jamendoData.results && jamendoData.results.length > 0) {
+          // Transform Jamendo data
+          const tracksToImport = jamendoData.results.map((track: any) => ({
+            id: track.id,
+            title: track.name,
+            artist: track.artist_name,
+            cover: track.album_image || track.image || `https://picsum.photos/300/300?random=${track.id}`,
+            duration: track.duration,
+            album: track.album_name || 'Unknown Album',
+            genre: 'Jamendo'
+          }));
+          
+          // Step 3: Import to database
+          console.log('💾 Importing tracks to database...');
+          const importResponse = await fetch(`${API_BASE_URL}/api/tracks/import-from-jamendo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tracks: tracksToImport })
+          });
+          
+          const importResult = await importResponse.json();
+          console.log('✅ Import result:', importResult);
+          
+          // Step 4: Fetch from database now that tracks are imported
+          console.log('📊 Fetching tracks from database...');
+          const finalResponse = await fetch(`${API_BASE_URL}/api/songs/trending?limit=200`);
+          const finalData = await finalResponse.json();
+          
+          const finalTracks = finalData.data.map((track: any) => ({
+            id: track.id,
+            title: track.title,
+            artist: track.artist_name,
+            cover: track.cover_image_url,
+            duration: track.duration,
+            album: track.album
+          }));
+          
+          console.log(`🎵 Ready! ${finalTracks.length} tracks loaded from database`);
+          setAllTrendingSongs(finalTracks);
+        }
+        
       } catch (error) {
-        console.error('Failed to fetch tracks:', error);
-
-        // Fallback sample data if Jamendo API fails
-        const fallbackTracks = [
-          {
-            id: 1,
-            title: "Bohemian Rhapsody",
-            artist: "Queen",
-            cover: "https://picsum.photos/300/300?random=1",
-            duration: "5:55",
-            album: "A Night at the Opera",
-            audioUrl: "#"
-          },
-          {
-            id: 2,
-            title: "Hotel California",
-            artist: "Eagles",
-            cover: "https://picsum.photos/300/300?random=2",
-            duration: "6:30",
-            album: "Hotel California",
-            audioUrl: "#"
-          },
-          {
-            id: 3,
-            title: "Stairway to Heaven",
-            artist: "Led Zeppelin",
-            cover: "https://picsum.photos/300/300?random=3",
-            duration: "8:02",
-            album: "Led Zeppelin IV",
-            audioUrl: "#"
-          },
-          {
-            id: 4,
-            title: "Imagine",
-            artist: "John Lennon",
-            cover: "https://picsum.photos/300/300?random=4",
-            duration: "3:03",
-            album: "Imagine",
-            audioUrl: "#"
-          },
-          {
-            id: 5,
-            title: "Sweet Child O' Mine",
-            artist: "Guns N' Roses",
-            cover: "https://picsum.photos/300/300?random=5",
-            duration: "5:03",
-            album: "Appetite for Destruction",
-            audioUrl: "#"
-          }
-        ];
-        setAllTrendingSongs(fallbackTracks);
+        console.error('Failed to fetch/import tracks:', error);
+        // Fallback: use existing database tracks or sample data
+        const fallbackResponse = await fetch(`${API_BASE_URL}/api/songs/trending`);
+        const fallbackData = await fallbackResponse.json();
+        if (fallbackData.data) {
+          setAllTrendingSongs(fallbackData.data.map((track: any) => ({
+            id: track.id,
+            title: track.title,
+            artist: track.artist_name,
+            cover: track.cover_image_url,
+            duration: track.duration,
+            album: track.album
+          })));
+        }
       } finally {
         setIsLoadingSongs(false);
       }
     };
     
-    fetchTracks();
+    fetchAndImportTracks();
   }, []);
 
   useEffect(() => {

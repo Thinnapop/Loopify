@@ -156,6 +156,91 @@ app.get('/api/test/sample-track', async (req, res) => {
   }
 });
 
+// ==================== IMPORT TRACKS FROM EXTERNAL API ====================
+app.post('/api/tracks/import-from-jamendo', async (req, res) => {
+  try {
+    const { tracks } = req.body; // Array of track objects from Jamendo
+    
+    console.log(`📥 Importing ${tracks.length} tracks from Jamendo...`);
+    
+    let imported = 0;
+    let skipped = 0;
+    
+    for (const track of tracks) {
+      try {
+        // Check if track already exists
+        const existing = await pool.query(
+          'SELECT "trackid" FROM track WHERE "trackid" = $1',
+          [track.id.toString()]
+        );
+        
+        if (existing.rows.length > 0) {
+          skipped++;
+          continue;
+        }
+        
+        // Insert track
+        await pool.query(
+          `INSERT INTO track ("trackid", "title", "durationms", "album", "genre", "coverurl", "releasedate")
+           VALUES ($1, $2, $3, $4, $5, $6, NOW())
+           ON CONFLICT ("trackid") DO NOTHING`,
+          [
+            track.id.toString(),
+            track.title,
+            track.duration * 1000 || 180000, // Convert seconds to ms
+            track.album || 'Unknown Album',
+            track.genre || 'Unknown',
+            track.cover
+          ]
+        );
+        
+        // Check if artist exists, if not create it
+        const artistExists = await pool.query(
+          'SELECT "artistid" FROM artist WHERE "name" = $1',
+          [track.artist]
+        );
+        
+        let artistId;
+        if (artistExists.rows.length === 0) {
+          artistId = 'artist_jamendo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          await pool.query(
+            `INSERT INTO artist ("artistid", "name", "country", "debutyear", "followers", "artisttype")
+             VALUES ($1, $2, 'Unknown', 2020, 0, 'person')
+             ON CONFLICT DO NOTHING`,
+            [artistId, track.artist]
+          );
+        } else {
+          artistId = artistExists.rows[0].artistid;
+        }
+        
+        // Create artist-track relationship
+        await pool.query(
+          `INSERT INTO artisttrack ("artistid", "trackid", "role")
+           VALUES ($1, $2, 'primary')
+           ON CONFLICT DO NOTHING`,
+          [artistId, track.id.toString()]
+        );
+        
+        imported++;
+      } catch (error) {
+        console.error(`Failed to import track ${track.id}:`, error.message);
+      }
+    }
+    
+    console.log(`✅ Import complete: ${imported} imported, ${skipped} skipped`);
+    res.json({ 
+      success: true, 
+      imported, 
+      skipped,
+      message: `Successfully imported ${imported} tracks!` 
+    });
+    
+  } catch (error) {
+    console.error('Import tracks error:', error);
+    res.status(500).json({ error: 'Failed to import tracks', details: error.message });
+  }
+});
+
 // ==================== AUTH ROUTES ====================
 app.post('/api/auth/register', async (req, res) => {
   console.log('Register attempt:', req.body.email);
