@@ -370,19 +370,68 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
   const ITEMS_PER_PAGE = 5;
 
   useEffect(() => {
-    const fetchTracks = async () => {
+    const fetchTracksFromJamendo = async () => {
       try {
         setIsLoadingSongs(true);
-        console.log('📊 Fetching tracks from database...');
+        console.log('🎵 Fetching from Jamendo...');
         
-        // Just fetch from your backend - that's it!
-        const response = await fetch(`${API_BASE_URL}/api/songs/trending?limit=50`);
+        // Try the Jamendo Radios/Stream approach - more reliable
+        const CLIENT_ID = 'aba8b95b'; // Your client ID
+        
+        // Fetch popular tracks using the playlists endpoint
+        const response = await fetch(
+          `https://api.jamendo.com/v3.0/tracks/?client_id=${CLIENT_ID}&format=json&limit=50&order=popularity_week&include=musicinfo&audioformat=mp32`
+        );
+        
+        if (!response.ok) {
+          throw new Error(`Jamendo API failed: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('📦 Jamendo response:', data);
         
-        console.log('✅ Fetched tracks:', data);
+        if (!data.results || data.results.length === 0) {
+          console.log('⚠️ No tracks from Jamendo, using database fallback');
+          // Fallback to database
+          const dbResponse = await fetch(`${API_BASE_URL}/api/songs/trending`);
+          const dbData = await dbResponse.json();
+          const tracks = dbData.data.map((track: any) => ({
+            id: track.id,
+            title: track.title,
+            artist: track.artist_name,
+            cover: track.cover_image_url,
+            duration: track.duration,
+            album: track.album,
+            audioUrl: track.audiourl
+          }));
+          setAllTrendingSongs(tracks);
+          setIsLoadingSongs(false);
+          return;
+        }
         
-        if (data.data && data.data.length > 0) {
-          const tracks = data.data.map((track: any) => ({
+        // Transform Jamendo data
+        const jamendoTracks = data.results.map((track: any) => ({
+          id: track.id,
+          title: track.name,
+          artist: track.artist_name,
+          cover: track.album_image || track.image || `https://picsum.photos/300/300?random=${track.id}`,
+          duration: track.duration ? `${Math.floor(track.duration / 60)}:${(track.duration % 60).toString().padStart(2, '0')}` : '3:00',
+          album: track.album_name || 'Single',
+          audioUrl: track.audio || track.audiodownload || '#'
+        }));
+        
+        console.log('✅ Loaded', jamendoTracks.length, 'Jamendo tracks');
+        console.log('Sample track:', jamendoTracks[0]);
+        
+        setAllTrendingSongs(jamendoTracks);
+        
+      } catch (error) {
+        console.error('Jamendo failed:', error);
+        // Fallback to database
+        try {
+          const dbResponse = await fetch(`${API_BASE_URL}/api/songs/trending`);
+          const dbData = await dbResponse.json();
+          const tracks = dbData.data.map((track: any) => ({
             id: track.id,
             title: track.title,
             artist: track.artist_name,
@@ -390,21 +439,16 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
             duration: track.duration,
             album: track.album
           }));
-          
-          console.log('🎵 Loaded tracks:', tracks.length);
           setAllTrendingSongs(tracks);
-        } else {
-          console.error('❌ No tracks found in response');
+        } catch (fallbackError) {
+          console.error('Fallback also failed:', fallbackError);
         }
-        
-      } catch (error) {
-        console.error('Failed to fetch tracks:', error);
       } finally {
         setIsLoadingSongs(false);
       }
     };
     
-    fetchTracks();
+    fetchTracksFromJamendo();
   }, []);
 
   useEffect(() => {
