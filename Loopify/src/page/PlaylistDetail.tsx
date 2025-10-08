@@ -410,15 +410,15 @@ const handleRemoveMember = async (userId: number) => {
       <h2>Playlist Members</h2>
       <div className="members-list">
         {members.map(member => (
-          <div key={member.userId} className="member-item">
+          <div key={member.userid} className="member-item">
             <div className="member-info">
-              <div className="member-name">{member.displayName}</div>
+              <div className="member-name">{member.displayname || member.userid}</div>
               <div className="member-role">{member.role}</div>
             </div>
             {playlist?.role === 'owner' && member.role !== 'owner' && (
               <button
                 className="remove-member-btn"
-                onClick={() => handleRemoveMember(member.userId)}
+                onClick={() => handleRemoveMember(member.userid)}
               >
                 Remove
               </button>
