@@ -237,34 +237,6 @@ INSERT INTO GroupArtist (ArtistID, GroupSize, LeaderName) VALUES
 ('artist_010', 5, 'Adam Levine');
 
 -- Insert Tracks
-INSERT INTO Track (TrackID, Title, DurationMs, ExplicitFlag, ReleaseDate, Genre, Album, CoverURL) VALUES
-('track_001', 'Blinding Lights', 200000, false, '2019-11-29', 'Pop', 'After Hours', 'https://example.com/cover1.jpg'),
-('track_002', 'Anti-Hero', 213000, false, '2022-10-21', 'Pop', 'Midnights', 'https://example.com/cover2.jpg'),
-('track_003', 'Dynamite', 199000, false, '2020-08-21', 'K-Pop', 'BE', 'https://example.com/cover3.jpg'),
-('track_004', 'Shape of You', 233000, false, '2017-01-06', 'Pop', 'Divide', 'https://example.com/cover4.jpg'),
-('track_005', 'bad guy', 194000, false, '2019-03-29', 'Pop', 'When We All Fall Asleep', 'https://example.com/cover5.jpg'),
-('track_006', 'One Dance', 174000, false, '2016-04-05', 'Hip-Hop', 'Views', 'https://example.com/cover6.jpg'),
-('track_007', 'Believer', 204000, false, '2017-02-01', 'Rock', 'Evolve', 'https://example.com/cover7.jpg'),
-('track_008', 'Levitating', 203000, false, '2020-03-27', 'Pop', 'Future Nostalgia', 'https://example.com/cover8.jpg'),
-('track_009', 'Circles', 215000, false, '2019-08-30', 'Pop', 'Hollywood Bleeding', 'https://example.com/cover9.jpg'),
-('track_010', 'Memories', 189000, false, '2019-09-20', 'Pop', 'JORDI', 'https://example.com/cover10.jpg'),
-('track_011', 'New Dawn', 195000, false, '2025-09-25', 'Pop', 'Latest Album', 'https://example.com/cover11.jpg'),
-('track_012', 'Midnight Dreams', 210000, false, '2025-09-26', 'Pop', 'New Single', 'https://example.com/cover12.jpg');
-
--- Insert ArtistTrack relationships
-INSERT INTO ArtistTrack (ArtistID, TrackID) VALUES
-('artist_001', 'track_001'),
-('artist_002', 'track_002'),
-('artist_003', 'track_003'),
-('artist_004', 'track_004'),
-('artist_005', 'track_005'),
-('artist_006', 'track_006'),
-('artist_007', 'track_007'),
-('artist_008', 'track_008'),
-('artist_009', 'track_009'),
-('artist_010', 'track_010'),
-('artist_001', 'track_011'),
-('artist_002', 'track_012');
 
 -- Insert Playlists (including collaborative ones)
 INSERT INTO Playlist (PlaylistID, Title, Description, Visibility, CreatorID) VALUES
