@@ -195,7 +195,8 @@ INSERT INTO Users (UserID, DisplayName, Email, Password, Language, Country, Sex,
 ('user_005', 'Carlos Rodriguez', 'carlos.r@email.com', '$2a$10$hash5', 'es', 'Spain', 'Male', 'active'),
 ('user_006', 'Yuki Tanaka', 'yuki.t@email.com', '$2a$10$hash6', 'ja', 'Japan', 'Male', 'active'),
 ('user_007', 'Lisa Anderson', 'lisa.a@email.com', '$2a$10$hash7', 'en', 'USA', 'Female', 'active'),
-('user_008', 'Tom Brown', 'tom.b@email.com', '$2a$10$hash8', 'en', 'UK', 'Male', 'active');
+('user_008', 'Tom Brown', 'tom.b@email.com', '$2a$10$hash8', 'en', 'UK', 'Male', 'active'),
+('user_009', 'Test User', 'test@example.com', '$2a$10$hash9', 'en', 'Thailand', 'Male', 'active');
 
 -- Insert Moods
 INSERT INTO Mood (MoodID, FeelingName) VALUES

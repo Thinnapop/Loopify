@@ -903,6 +903,142 @@ app.post('/api/playlists/:playlistId/tracks', authenticateToken, async (req, res
   }
 });
 
+// ==================== PLAYLIST MEMBERS ROUTES ====================
+app.get('/api/playlists/:playlistId/members', authenticateToken, async (req, res) => {
+  try {
+    const { playlistId } = req.params;
+
+    const members = await pool.query(`
+      SELECT pm.*, u."displayname", u.email, u.country, u.language
+      FROM playlistmember pm
+      JOIN users u ON pm."userid" = u."userid"
+      WHERE pm."playlistid" = $1
+      ORDER BY pm."joinedat" ASC
+    `, [playlistId]);
+
+    res.json(members.rows);
+  } catch (error) {
+    console.error('❌ Fetch members error:', error);
+    res.status(500).json({ error: 'Failed to fetch members', details: error.message });
+  }
+});
+
+app.delete('/api/playlists/:playlistId/members/:userId', authenticateToken, async (req, res) => {
+  try {
+    const { playlistId, userId } = req.params;
+
+    // Check if user has permission (owner only for removing members)
+    const member = await pool.query(
+      'SELECT "role" FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
+      [playlistId, req.user.userId]
+    );
+
+    if (member.rows.length === 0 || member.rows[0].role !== 'owner') {
+      return res.status(403).json({ error: 'Only owners can remove members' });
+    }
+
+    // Don't allow removing the owner
+    const targetMember = await pool.query(
+      'SELECT "role" FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
+      [playlistId, userId]
+    );
+
+    if (targetMember.rows.length === 0) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+
+    if (targetMember.rows[0].role === 'owner') {
+      return res.status(400).json({ error: 'Cannot remove playlist owner' });
+    }
+
+    await pool.query(
+      'DELETE FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
+      [playlistId, userId]
+    );
+
+    console.log('✅ Member removed from playlist:', playlistId, 'by user:', req.user.userId);
+    res.json({ message: 'Member removed successfully' });
+  } catch (error) {
+    console.error('❌ Remove member error:', error);
+    res.status(500).json({ error: 'Failed to remove member', details: error.message });
+  }
+});
+
+app.post('/api/playlists/:playlistId/invite', authenticateToken, async (req, res) => {
+  try {
+    const { playlistId } = req.params;
+    const { role } = req.body;
+
+    // Check if user has permission (owner or editor)
+    const member = await pool.query(
+      'SELECT "role" FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
+      [playlistId, req.user.userId]
+    );
+
+    if (member.rows.length === 0 || !['owner', 'editor'].includes(member.rows[0].role)) {
+      return res.status(403).json({ error: 'No permission to generate invites' });
+    }
+
+    // Generate a simple invite token (in production, use JWT or proper tokens)
+    const inviteToken = Buffer.from(JSON.stringify({
+      playlistId,
+      role: role || 'viewer',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    })).toString('base64');
+
+    const inviteUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/join-playlist/${inviteToken}`;
+
+    console.log('✅ Invite generated for playlist:', playlistId);
+    res.json({
+      inviteUrl,
+      inviteToken,
+      role: role || 'viewer',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    });
+  } catch (error) {
+    console.error('❌ Generate invite error:', error);
+    res.status(500).json({ error: 'Failed to generate invite', details: error.message });
+  }
+});
+
+app.post('/api/playlists/join/:inviteToken', authenticateToken, async (req, res) => {
+  try {
+    const { inviteToken } = req.params;
+
+    // Decode invite token
+    const inviteData = JSON.parse(Buffer.from(inviteToken, 'base64').toString());
+
+    if (new Date() > new Date(inviteData.expiresAt)) {
+      return res.status(400).json({ error: 'Invite link expired' });
+    }
+
+    const { playlistId, role } = inviteData;
+
+    // Check if already a member
+    const existing = await pool.query(
+      'SELECT * FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
+      [playlistId, req.user.userId]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'Already a member of this playlist' });
+    }
+
+    // Add user to playlist
+    await pool.query(
+      `INSERT INTO playlistmember ("playlistid", "userid", "role")
+       VALUES ($1, $2, $3)`,
+      [playlistId, req.user.userId, role]
+    );
+
+    console.log('✅ User joined playlist:', playlistId, 'with role:', role);
+    res.json({ message: 'Successfully joined playlist', role });
+  } catch (error) {
+    console.error('❌ Join playlist error:', error);
+    res.status(500).json({ error: 'Failed to join playlist', details: error.message });
+  }
+});
+
 // ==================== ALERTS ROUTES ====================
 app.get('/api/alerts/pending', authenticateToken, async (req, res) => {
   try {
