@@ -412,7 +412,12 @@ const handleRemoveMember = async (userId: number) => {
         {members.map(member => (
           <div key={member.userid} className="member-item">
             <div className="member-info">
-              <div className="member-name">{member.displayname || member.userid}</div>
+              <div className="member-name">
+                {member.displayname ||
+                 member.email?.split('@')[0] ||
+                 `User ${member.userid}` ||
+                 'Unknown User'}
+              </div>
               <div className="member-role">{member.role}</div>
             </div>
             {playlist?.role === 'owner' && member.role !== 'owner' && (
