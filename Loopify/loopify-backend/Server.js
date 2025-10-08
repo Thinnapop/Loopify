@@ -729,9 +729,30 @@ app.get('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
 app.post('/api/playlists/create', authenticateToken, async (req, res) => {
   try {
     const { title, description, visibility } = req.body;
-    const playlistId = 'playlist_' + Date.now();
     
     console.log('📝 Creating playlist:', title);
+    
+    // 🆕 Generate sequential playlist ID
+    const lastPlaylistResult = await pool.query(
+      `SELECT "playlistid" FROM playlist 
+       WHERE "playlistid" ~ '^playlist_[0-9]{3}$'
+       ORDER BY CAST(SUBSTRING("playlistid" FROM 10) AS INTEGER) DESC
+       LIMIT 1`
+    );
+    
+    let nextNumber = 1;
+    if (lastPlaylistResult.rows.length > 0) {
+      const lastPlaylistId = lastPlaylistResult.rows[0].playlistid;
+      const lastNumber = parseInt(lastPlaylistId.replace('playlist_', ''), 10);
+      nextNumber = lastNumber + 1;
+      console.log('📊 Last playlist:', lastNumber, '→ Next:', nextNumber);
+    } else {
+      console.log('📊 No sequential playlists found, starting from playlist_001');
+    }
+    
+    // Format with leading zeros: playlist_001, playlist_002, etc.
+    const playlistId = `playlist_${String(nextNumber).padStart(3, '0')}`;
+    console.log('✅ Generated playlistId:', playlistId);
     
     // Default to 'private' if no visibility specified
     const finalVisibility = visibility || 'private';
@@ -744,7 +765,7 @@ app.post('/api/playlists/create', authenticateToken, async (req, res) => {
         title, 
         description || '', 
         finalVisibility,
-        req.user.userId  // Set creator from authenticated user
+        req.user.userId
       ]
     );
     
