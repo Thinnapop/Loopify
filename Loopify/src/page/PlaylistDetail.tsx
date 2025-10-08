@@ -118,6 +118,8 @@ const handleRemoveMember = async (userId: number) => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
+      console.log('📋 Playlist data received:', data);
+      console.log('👤 User role:', data.role);
       setPlaylist(data);
       setTracks(data.tracks || []);
       setEditTitle(data.title);
@@ -236,40 +238,44 @@ const handleRemoveMember = async (userId: number) => {
             </p>
             
             <div className="action-buttons">
+            <div style={{marginBottom: '10px', fontSize: '12px', color: '#b3b3b3'}}>
+              Your Role: <strong>{playlist?.role || 'Loading...'}</strong>
+            </div>
+
             {(playlist?.role === 'Owner' || playlist?.role === 'Editor') && (
                 <>
-                <button 
+                <button
                     className="edit-playlist-btn"
                     onClick={() => setShowEditModal(true)}
                 >
-                    Edit Details
+                    ✏️ Edit Details
                 </button>
-                <button 
+                <button
                     className="share-playlist-btn"
                     onClick={() => {
                     setShowShareModal(true);
                     handleGenerateInvite();
                     }}
                 >
-                    Share
+                    🔗 Share
                 </button>
                 </>
             )}
-            <button 
+            <button
                 className="members-btn"
                 onClick={() => {
                 setShowMembersModal(true);
                 fetchMembers();
                 }}>
-                Members ({members.length || 0})
+                👥 Members ({members.length || 0})
             </button>
-            
+
             {playlist?.role === 'Owner' && (
-                <button 
+                <button
                 className="delete-playlist-btn"
                 onClick={() => setShowDeleteConfirm(true)}
                 >
-                Delete Playlist
+                🗑️ Delete Playlist
                 </button>
             )}
             </div>
@@ -290,7 +296,7 @@ const handleRemoveMember = async (userId: number) => {
                   </div>
                   <span className="track-duration">{track.duration}</span>
                   {(playlist?.role === 'Owner' || playlist?.role === 'Editor') && (
-                    <button 
+                    <button
                       className="delete-track-btn"
                       onClick={(e) => handleDeleteTrack(track.id, e)}
                       title="Remove from playlist"
@@ -674,7 +680,7 @@ const playlistStyles = `
   .delete-track-btn {
     width: 32px;
     height: 32px;
-    background: transparent;
+    background: rgba(255, 255, 255, 0.1);
     border: 1px solid #555;
     color: #999;
     border-radius: 50%;
@@ -683,6 +689,8 @@ const playlistStyles = `
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
+    font-size: 16px;
+    font-weight: bold;
   }
   .delete-track-btn:hover {
     background: #ff4444;
