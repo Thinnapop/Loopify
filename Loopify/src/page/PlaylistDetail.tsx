@@ -21,7 +21,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({ playlistId, onBackClick
 const [inviteCode, setInviteCode] = useState('');
 const [showMembersModal, setShowMembersModal] = useState(false);
 const [members, setMembers] = useState<any[]>([]);
-const [inviteRole, setInviteRole] = useState<'Editor' | 'Viewer'>('Viewer');
+const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('viewer');
 
 const handleGenerateInvite = async () => {
     console.log(`Invite code generated for playlist ${playlistId} with role ${inviteRole}`);
@@ -336,10 +336,10 @@ const handleRemoveMember = async (userId: number) => {
         <label>
         <input
             type="radio"
-            value="Viewer"
-            checked={inviteRole === 'Viewer'}
+            value="viewer"
+            checked={inviteRole === 'viewer'}
             onChange={(e) => {
-                setInviteRole('Viewer');
+                setInviteRole('viewer');
                 setInviteCode('');  
             }}
         />
@@ -352,10 +352,10 @@ const handleRemoveMember = async (userId: number) => {
         <label>
         <input
             type="radio"
-            value="Editor"
-            checked={inviteRole === 'Editor'}
+            value="editor"
+            checked={inviteRole === 'editor'}
             onChange={(e) => {
-                setInviteRole('Editor');
+                setInviteRole('editor');
                 setInviteCode('');  // Add this
             }}
         />
