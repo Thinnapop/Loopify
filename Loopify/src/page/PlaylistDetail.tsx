@@ -281,7 +281,7 @@ const handleRemoveMember = async (userId: number) => {
                 👥 Members ({members.length || 0})
             </button>
 
-            {playlist?.role === 'Owner' && (
+            {playlist?.role === 'owner' && (
                 <button
                 className="delete-playlist-btn"
                 onClick={() => setShowDeleteConfirm(true)}
@@ -307,7 +307,7 @@ const handleRemoveMember = async (userId: number) => {
                     <div className="track-artist">{track.artist}</div>
                   </div>
                   <span className="track-duration">{track.duration}</span>
-                  {(playlist?.role === 'Owner' || playlist?.role === 'Editor') && (
+                  {(playlist?.role === 'owner' || playlist?.role === 'editor') && (
                     <button
                       className="delete-track-btn"
                       onClick={(e) => handleDeleteTrack(track.id, e)}
@@ -415,8 +415,8 @@ const handleRemoveMember = async (userId: number) => {
               <div className="member-name">{member.displayName}</div>
               <div className="member-role">{member.role}</div>
             </div>
-            {playlist?.role === 'Owner' && member.role !== 'Owner' && (
-              <button 
+            {playlist?.role === 'owner' && member.role !== 'owner' && (
+              <button
                 className="remove-member-btn"
                 onClick={() => handleRemoveMember(member.userId)}
               >
