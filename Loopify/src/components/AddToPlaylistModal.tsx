@@ -32,17 +32,29 @@ const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({ trackId, onClos
   const handleAddToPlaylist = async (playlistId: number) => {
     try {
       const token = localStorage.getItem('authToken');
+      
+      // Get current song data from somewhere - we need to pass it along
+      // For now, we'll need to receive it as a prop
       const response = await fetch(`${API_BASE_URL}/api/playlists/${playlistId}/tracks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ trackId })
+        body: JSON.stringify({ 
+          trackId,
+          trackData: {
+            title: 'Track Title', // We need to pass this from parent
+            artist: 'Artist Name',
+            album: 'Album',
+            cover: 'cover URL',
+            durationInSeconds: 180,
+            genre: 'Various'
+          }
+        })
       });
-
+  
       if (response.ok) {
-        // Dispatch custom event to notify other components
         window.dispatchEvent(new CustomEvent('playlistTrackAdded', {
           detail: { playlistId }
         }));

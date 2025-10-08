@@ -794,51 +794,92 @@ app.post('/api/playlists/create', authenticateToken, async (req, res) => {
 app.post('/api/playlists/:playlistId/tracks', authenticateToken, async (req, res) => {
   try {
     const { playlistId } = req.params;
-    const { trackId } = req.body;
+    const { trackId, trackData } = req.body; // Accept track metadata too
     
-    console.log('=== ADD TRACK DEBUG ===');
-    console.log('📋 PlaylistId from URL:', playlistId);
-    console.log('🎵 TrackId from body:', trackId);
-    console.log('👤 UserId from token:', req.user.userId);
-    console.log('👤 Full user object:', req.user);
+    console.log('➕ Adding track:', trackId, 'to playlist:', playlistId);
+    console.log('📦 Track data received:', trackData);
     
-    // Check membership
     const member = await pool.query(
-      'SELECT * FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
+      'SELECT "role" FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
       [playlistId, req.user.userId]
     );
     
-    console.log('🔍 Membership found:', member.rows);
-    console.log('🔍 Row count:', member.rows.length);
-    
-    if (member.rows.length === 0) {
-      console.log('❌ No membership record found!');
-      return res.status(403).json({ 
-        error: 'No permission to add tracks',
-        debug: {
-          playlistId,
-          userId: req.user.userId,
-          membershipFound: false
-        }
-      });
-    }
-    
-    if (member.rows[0].role === 'viewer') {
-      console.log('❌ User is only a viewer!');
+    if (member.rows.length === 0 || member.rows[0].role === 'viewer') {
       return res.status(403).json({ error: 'No permission to add tracks' });
     }
     
-    console.log('✅ Permission check passed! Role:', member.rows[0].role);
+    // 🆕 Check if track exists in database, if not create it
+    const trackExists = await pool.query(
+      'SELECT "trackid" FROM track WHERE "trackid" = $1',
+      [trackId.toString()]
+    );
     
+    if (trackExists.rows.length === 0) {
+      console.log('🆕 Track not in database, creating it...');
+      
+      if (!trackData) {
+        return res.status(400).json({ 
+          error: 'Track data required for new tracks',
+          hint: 'Please include trackData in request body'
+        });
+      }
+      
+      // Insert the track
+      await pool.query(
+        `INSERT INTO track ("trackid", "title", "durationms", "album", "genre", "coverurl", "releasedate")
+         VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+        [
+          trackId.toString(),
+          trackData.title || 'Unknown',
+          trackData.durationInSeconds ? trackData.durationInSeconds * 1000 : 180000,
+          trackData.album || 'Single',
+          trackData.genre || 'Various',
+          trackData.cover || `https://picsum.photos/300/300?random=${trackId}`
+        ]
+      );
+      
+      // Create or find artist
+      const artistName = trackData.artist || 'Unknown Artist';
+      let artistId;
+      
+      const artistExists = await pool.query(
+        'SELECT "artistid" FROM artist WHERE "name" = $1',
+        [artistName]
+      );
+      
+      if (artistExists.rows.length === 0) {
+        artistId = 'artist_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        await pool.query(
+          `INSERT INTO artist ("artistid", "name", "country", "debutyear", "followers", "artisttype")
+           VALUES ($1, $2, 'Unknown', 2020, 0, 'person')`,
+          [artistId, artistName]
+        );
+      } else {
+        artistId = artistExists.rows[0].artistid;
+      }
+      
+      // Link artist to track
+      await pool.query(
+        `INSERT INTO artisttrack ("artistid", "trackid", "role")
+         VALUES ($1, $2, 'primary')
+         ON CONFLICT DO NOTHING`,
+        [artistId, trackId.toString()]
+      );
+      
+      console.log('✅ Track created in database');
+    }
+    
+    // Check if already in playlist
     const existing = await pool.query(
       'SELECT * FROM playlistitem WHERE "playlistid" = $1 AND "trackid" = $2',
-      [playlistId, trackId]
+      [playlistId, trackId.toString()]
     );
     
     if (existing.rows.length > 0) {
       return res.status(400).json({ error: 'Track already in playlist' });
     }
     
+    // Get max position
     const maxPos = await pool.query(
       'SELECT MAX("position") as "maxpos" FROM playlistitem WHERE "playlistid" = $1',
       [playlistId]
@@ -847,13 +888,14 @@ app.post('/api/playlists/:playlistId/tracks', authenticateToken, async (req, res
     const position = (maxPos.rows[0].maxpos || 0) + 1;
     const itemId = 'item_' + Date.now();
     
+    // Add to playlist
     await pool.query(
       `INSERT INTO playlistitem ("listitemid", "playlistid", "trackid", "addedbyuserid", "position") 
        VALUES ($1, $2, $3, $4, $5)`,
-      [itemId, playlistId, trackId, req.user.userId, position]
+      [itemId, playlistId, trackId.toString(), req.user.userId, position]
     );
     
-    console.log('✅ Track added successfully');
+    console.log('✅ Track added to playlist successfully');
     res.json({ message: 'Track added successfully', itemId });
   } catch (error) {
     console.error('❌ Add track error:', error);
