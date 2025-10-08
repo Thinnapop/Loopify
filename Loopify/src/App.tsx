@@ -65,8 +65,8 @@ function App() {
 
   useEffect(() => {
     const path = window.location.pathname;
-    if (path.startsWith('/invite/')) {
-      const code = path.split('/invite/')[1];
+    if (path.startsWith('/join-playlist/')) {
+      const code = path.split('/join-playlist/')[1];
       setInviteCode(code);
       setCurrentPage('join-playlist');
     }
