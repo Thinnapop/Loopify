@@ -24,6 +24,7 @@ CREATE TABLE Users (
     Password VARCHAR(255) NOT NULL,
     Language VARCHAR(10) DEFAULT 'en',
     Country VARCHAR(50),
+    Sex VARCHAR(20),
     Timezone VARCHAR(50) DEFAULT 'UTC',
     Status VARCHAR(20) DEFAULT 'active',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -186,15 +187,15 @@ CREATE TABLE MoodSession (
 -- Insert sample data
 
 -- Insert Users
-INSERT INTO Users (UserID, DisplayName, Email, Password, Language, Country, Status) VALUES
-('user_001', 'John Smith', 'john.smith@email.com', '$2a$10$hash1', 'en', 'USA', 'active'),
-('user_002', 'Sarah Johnson', 'sarah.j@email.com', '$2a$10$hash2', 'en', 'UK', 'active'),
-('user_003', 'Mike Chen', 'mike.chen@email.com', '$2a$10$hash3', 'en', 'Canada', 'active'),
-('user_004', 'Emma Wilson', 'emma.w@email.com', '$2a$10$hash4', 'en', 'Australia', 'active'),
-('user_005', 'Carlos Rodriguez', 'carlos.r@email.com', '$2a$10$hash5', 'es', 'Spain', 'active'),
-('user_006', 'Yuki Tanaka', 'yuki.t@email.com', '$2a$10$hash6', 'ja', 'Japan', 'active'),
-('user_007', 'Lisa Anderson', 'lisa.a@email.com', '$2a$10$hash7', 'en', 'USA', 'active'),
-('user_008', 'Tom Brown', 'tom.b@email.com', '$2a$10$hash8', 'en', 'UK', 'active');
+INSERT INTO Users (UserID, DisplayName, Email, Password, Language, Country, Sex, Status) VALUES
+('user_001', 'John Smith', 'john.smith@email.com', '$2a$10$hash1', 'en', 'USA', 'Male', 'active'),
+('user_002', 'Sarah Johnson', 'sarah.j@email.com', '$2a$10$hash2', 'en', 'UK', 'Female', 'active'),
+('user_003', 'Mike Chen', 'mike.chen@email.com', '$2a$10$hash3', 'en', 'Canada', 'Male', 'active'),
+('user_004', 'Emma Wilson', 'emma.w@email.com', '$2a$10$hash4', 'en', 'Australia', 'Female', 'active'),
+('user_005', 'Carlos Rodriguez', 'carlos.r@email.com', '$2a$10$hash5', 'es', 'Spain', 'Male', 'active'),
+('user_006', 'Yuki Tanaka', 'yuki.t@email.com', '$2a$10$hash6', 'ja', 'Japan', 'Male', 'active'),
+('user_007', 'Lisa Anderson', 'lisa.a@email.com', '$2a$10$hash7', 'en', 'USA', 'Female', 'active'),
+('user_008', 'Tom Brown', 'tom.b@email.com', '$2a$10$hash8', 'en', 'UK', 'Male', 'active');
 
 -- Insert Moods
 INSERT INTO Mood (MoodID, FeelingName) VALUES
@@ -219,21 +220,6 @@ INSERT INTO Artist (ArtistID, Name, Country, DebutYear, Followers, ArtistType) V
 ('artist_008', 'Dua Lipa', 'UK', 2015, 55000000, 'person'),
 ('artist_009', 'Post Malone', 'USA', 2015, 58000000, 'person'),
 ('artist_010', 'Maroon 5', 'USA', 2001, 40000000, 'group');
-
--- Insert ArtistTrack relationships
-INSERT INTO ArtistTrack (ArtistID, TrackID, Role) VALUES
-('artist_001', 'track_001', 'primary'), -- The Weeknd - Bohemian Rhapsody (cover)
-('artist_007', 'track_002', 'primary'), -- Imagine Dragons - Hotel California (cover)
-('artist_007', 'track_003', 'primary'), -- Imagine Dragons - Stairway to Heaven (cover)
-('artist_002', 'track_004', 'primary'), -- Taylor Swift - Imagine (cover)
-('artist_009', 'track_005', 'primary'), -- Post Malone - Billie Jean (cover)
-('artist_005', 'track_006', 'primary'), -- Billie Eilish - Smells Like Teen Spirit (cover)
-('artist_006', 'track_007', 'primary'), -- Drake - Sweet Child O Mine (cover)
-('artist_008', 'track_008', 'primary'), -- Dua Lipa - Like a Prayer (cover)
-('artist_004', 'track_009', 'primary'), -- Ed Sheeran - Wonderwall (cover)
-('artist_003', 'track_010', 'primary'), -- BTS - Purple Rain (cover)
-('artist_001', 'track_011', 'primary'), -- The Weeknd - New Release Track 1
-('artist_006', 'track_012', 'primary'); -- Drake - New Release Track 2
 
 -- Insert Person details
 INSERT INTO Person (ArtistID, Gender, Rating, DateOfBirth) VALUES
@@ -261,10 +247,25 @@ INSERT INTO Track (TrackID, Title, DurationMs, ExplicitFlag, ReleaseDate, Genre,
 ('track_006', 'Smells Like Teen Spirit', 301000, FALSE, '1991-09-10', 'Grunge', 'Nevermind', 'https://picsum.photos/300/300?random=6', 'https://example.com/audio6.mp3'),
 ('track_007', 'Sweet Child O Mine', 356000, FALSE, '1987-07-21', 'Rock', 'Appetite for Destruction', 'https://picsum.photos/300/300?random=7', 'https://example.com/audio7.mp3'),
 ('track_008', 'Like a Prayer', 313000, FALSE, '1989-03-03', 'Pop', 'Like a Prayer', 'https://picsum.photos/300/300?random=8', 'https://example.com/audio8.mp3'),
-('track_009', 'Wonderwall', 258000, FALSE, '1995-10-30', 'Britpop', '(What\'s the Story) Morning Glory?', 'https://picsum.photos/300/300?random=9', 'https://example.com/audio9.mp3'),
+('track_009', 'Wonderwall', 258000, FALSE, '1995-10-30', 'Britpop', '(What''s the Story) Morning Glory?', 'https://picsum.photos/300/300?random=9', 'https://example.com/audio9.mp3'),
 ('track_010', 'Purple Rain', 521000, FALSE, '1984-06-25', 'Pop', 'Purple Rain', 'https://picsum.photos/300/300?random=10', 'https://example.com/audio10.mp3'),
 ('track_011', 'New Release Track 1', 210000, FALSE, '2025-01-15', 'Pop', 'New Album', 'https://picsum.photos/300/300?random=11', 'https://example.com/audio11.mp3'),
 ('track_012', 'New Release Track 2', 195000, FALSE, '2025-01-20', 'Hip Hop', 'Latest Hits', 'https://picsum.photos/300/300?random=12', 'https://example.com/audio12.mp3');
+
+-- Insert ArtistTrack relationships (AFTER tracks are inserted)
+INSERT INTO ArtistTrack (ArtistID, TrackID, Role) VALUES
+('artist_001', 'track_001', 'primary'), -- The Weeknd - Bohemian Rhapsody (cover)
+('artist_007', 'track_002', 'primary'), -- Imagine Dragons - Hotel California (cover)
+('artist_007', 'track_003', 'primary'), -- Imagine Dragons - Stairway to Heaven (cover)
+('artist_002', 'track_004', 'primary'), -- Taylor Swift - Imagine (cover)
+('artist_009', 'track_005', 'primary'), -- Post Malone - Billie Jean (cover)
+('artist_005', 'track_006', 'primary'), -- Billie Eilish - Smells Like Teen Spirit (cover)
+('artist_006', 'track_007', 'primary'), -- Drake - Sweet Child O Mine (cover)
+('artist_008', 'track_008', 'primary'), -- Dua Lipa - Like a Prayer (cover)
+('artist_004', 'track_009', 'primary'), -- Ed Sheeran - Wonderwall (cover)
+('artist_003', 'track_010', 'primary'), -- BTS - Purple Rain (cover)
+('artist_001', 'track_011', 'primary'), -- The Weeknd - New Release Track 1
+('artist_006', 'track_012', 'primary'); -- Drake - New Release Track 2
 
 -- Insert Playlists (including collaborative ones)
 INSERT INTO Playlist (PlaylistID, Title, Description, Visibility, CreatorID) VALUES

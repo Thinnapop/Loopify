@@ -370,26 +370,80 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
   
   const ITEMS_PER_PAGE = 5;
 
-  // Helper function to import tracks to database
-  const importTracksToDatabase = async (tracks: Song[]) => {
+  // Helper function to format follower counts
+  const formatFollowers = (count: number) => {
+    if (count >= 1000000) return `${Math.floor(count / 1000000)}M+ followers`;
+    if (count >= 1000) return `${Math.floor(count / 1000)}K+ followers`;
+    return `${count} followers`;
+  };
+
+  // Helper function to import tracks from Jamendo to database
+  const importTracksFromJamendo = async () => {
     try {
+      console.log('🌐 Fetching from Jamendo API...');
+      const CLIENT_ID = 'aba8b95b';
+
+      const response = await fetch(
+        `https://api.jamendo.com/v3.0/tracks/?client_id=${CLIENT_ID}&format=json&limit=50&order=popularity_week&include=musicinfo&audioformat=mp32`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Jamendo API failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('📦 Jamendo response:', data);
+
+      if (!data.results || data.results.length === 0) {
+        console.log('⚠️ No tracks from Jamendo');
+        return;
+      }
+
+      // Transform Jamendo data and import to database
+      const jamendoTracks = data.results.map((track: any) => ({
+        id: track.id,
+        title: track.name,
+        artist: track.artist_name,
+        cover: track.album_image || track.image || `https://picsum.photos/300/300?random=${track.id}`,
+        duration: track.duration ? `${Math.floor(track.duration / 60)}:${(track.duration % 60).toString().padStart(2, '0')}` : '3:00',
+        album: track.album_name || 'Single',
+        audioUrl: track.audio || track.audiodownload || '#'
+      }));
+
       console.log('📥 Importing tracks to database...');
-      const response = await fetch(`${API_BASE_URL}/api/tracks/import-from-jamendo`, {
+      const importResponse = await fetch(`${API_BASE_URL}/api/tracks/import-from-jamendo`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ tracks })
+        body: JSON.stringify({ tracks: jamendoTracks })
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (importResponse.ok) {
+        const result = await importResponse.json();
         console.log('✅ Tracks imported successfully:', result.message);
+
+        // Now fetch from database again
+        const dbResponse = await fetch(`${API_BASE_URL}/api/songs/trending?limit=50`);
+        if (dbResponse.ok) {
+          const dbData = await dbResponse.json();
+          const tracks = dbData.data.map((track: any) => ({
+            id: track.id,
+            title: track.title,
+            artist: track.artist_name,
+            cover: track.cover_image_url,
+            duration: track.duration,
+            album: track.album,
+            audioUrl: '#'
+          }));
+          setAllTrendingSongs(tracks);
+          console.log('✅ Loaded tracks from database after import');
+        }
       } else {
-        console.error('❌ Failed to import tracks:', response.statusText);
+        console.error('❌ Failed to import tracks:', importResponse.statusText);
       }
     } catch (error) {
-      console.error('❌ Import error:', error);
+      console.error('❌ Jamendo import error:', error);
     }
   };
 
@@ -405,132 +459,134 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onArtistSelect 
   };
 
   useEffect(() => {
-    const fetchTracksFromJamendo = async () => {
+    const fetchTracks = async () => {
       try {
         setIsLoadingSongs(true);
-        console.log('🎵 Fetching from Jamendo...');
-        
-        // Try the Jamendo Radios/Stream approach - more reliable
-        const CLIENT_ID = 'aba8b95b'; // Your client ID
-        
-        // Fetch popular tracks using the playlists endpoint
-        const response = await fetch(
-          `https://api.jamendo.com/v3.0/tracks/?client_id=${CLIENT_ID}&format=json&limit=50&order=popularity_week&include=musicinfo&audioformat=mp32`
-        );
-        
+        console.log('🎵 Fetching tracks from database...');
+
+        // Fetch from your backend database (following professor's recommendation)
+        const response = await fetch(`${API_BASE_URL}/api/songs/trending?limit=50`);
+
         if (!response.ok) {
-          throw new Error(`Jamendo API failed: ${response.status}`);
+          throw new Error(`Backend API failed: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        console.log('📦 Jamendo response:', data);
-        
-        if (!data.results || data.results.length === 0) {
-          console.log('⚠️ No tracks from Jamendo, using database fallback');
-          // Fallback to database
-          const dbResponse = await fetch(`${API_BASE_URL}/api/songs/trending`);
-          const dbData = await dbResponse.json();
-          const tracks = dbData.data.map((track: any) => ({
-            id: track.id,
-            title: track.title,
-            artist: track.artist_name,
-            cover: track.cover_image_url,
-            duration: track.duration,
-            album: track.album,
-            audioUrl: track.audiourl
-          }));
-          setAllTrendingSongs(tracks);
-          setIsLoadingSongs(false);
+        console.log('📦 Database response:', data);
+
+        if (!data.data || data.data.length === 0) {
+          console.log('⚠️ No tracks in database, falling back to Jamendo import...');
+
+          // If database is empty, fetch from Jamendo and import
+          await importTracksFromJamendo();
           return;
         }
-        
-        // Transform Jamendo data
-        const jamendoTracks = data.results.map((track: any) => ({
+
+        // Use tracks from database
+        const tracks = data.data.map((track: any) => ({
           id: track.id,
-          title: track.name,
+          title: track.title,
           artist: track.artist_name,
-          cover: track.album_image || track.image || `https://picsum.photos/300/300?random=${track.id}`,
-          duration: track.duration ? `${Math.floor(track.duration / 60)}:${(track.duration % 60).toString().padStart(2, '0')}` : '3:00',
-          album: track.album_name || 'Single',
-          audioUrl: track.audio || track.audiodownload || '#'
+          cover: track.cover_image_url,
+          duration: track.duration,
+          album: track.album,
+          audioUrl: '#'
         }));
-        
-        console.log('✅ Loaded', jamendoTracks.length, 'Jamendo tracks');
-        console.log('Sample track:', jamendoTracks[0]);
 
-        // Import tracks to database for backend API compatibility
-        importTracksToDatabase(jamendoTracks);
+        console.log('✅ Loaded', tracks.length, 'tracks from database');
+        console.log('Sample track:', tracks[0]);
 
-        setAllTrendingSongs(jamendoTracks);
-        
+        setAllTrendingSongs(tracks);
+
       } catch (error) {
-        console.error('Jamendo failed:', error);
-        // Fallback to database
+        console.error('Database fetch failed:', error);
+
+        // Fallback: import from Jamendo and try again
         try {
-          const dbResponse = await fetch(`${API_BASE_URL}/api/songs/trending`);
-          const dbData = await dbResponse.json();
-          const tracks = dbData.data.map((track: any) => ({
-            id: track.id,
-            title: track.title,
-            artist: track.artist_name,
-            cover: track.cover_image_url,
-            duration: track.duration,
-            album: track.album
-          }));
-          setAllTrendingSongs(tracks);
+          console.log('🔄 Attempting to import from Jamendo...');
+          await importTracksFromJamendo();
         } catch (fallbackError) {
-          console.error('Fallback also failed:', fallbackError);
+          console.error('Jamendo import also failed:', fallbackError);
         }
       } finally {
         setIsLoadingSongs(false);
       }
     };
-    
-    fetchTracksFromJamendo();
+
+    fetchTracks();
   }, []);
 
   useEffect(() => {
     const fetchArtists = async () => {
       try {
         setIsLoadingArtists(true);
-        // Jamendo API requires a client ID - get yours from https://developer.jamendo.com/
-        // Using a test Client ID first to verify the API works
-        const JAMENDO_CLIENT_ID = import.meta.env.VITE_JAMENDO_CLIENT_ID || 'aba8b95b';
+        console.log('🎤 Fetching artists from database...');
 
-        // For testing, you can also try: 'a287e50a' (public test ID)
-        const TEST_CLIENT_ID = 'a287e50a';
-
-        // If your Client ID doesn't work, uncomment this line:
-        // const JAMENDO_CLIENT_ID = TEST_CLIENT_ID;
-
-        console.log('Fetching artists with Client ID:', JAMENDO_CLIENT_ID);
-
-        const response = await fetch(`https://api.jamendo.com/v3.0/artists/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=143&order=popularity_total`);
-
-        console.log('Jamendo Artists API response status:', response.status);
+        // Fetch from your backend database (following professor's recommendation)
+        const response = await fetch(`${API_BASE_URL}/api/artists/popular?limit=20`);
 
         if (!response.ok) {
-          throw new Error(`Jamendo API error: ${response.status} - ${response.statusText}`);
+          throw new Error(`Backend API failed: ${response.status}`);
         }
 
-        const jamendoData = await response.json();
-        console.log('Jamendo artists data:', jamendoData);
+        const data = await response.json();
+        console.log('📦 Database artists response:', data);
 
-        // Transform Jamendo data to match our Artist interface
-        const transformedArtists = jamendoData.results?.map((artist: any) => ({
+        if (!data.data || data.data.length === 0) {
+          console.log('⚠️ No artists in database, using fallback data');
+          // Use fallback sample data
+          const fallbackArtists = [
+            {
+              id: 1,
+              name: "Queen",
+              type: "Rock Band",
+              avatar: "https://picsum.photos/200/200?random=10",
+              followers: "50M+ followers"
+            },
+            {
+              id: 2,
+              name: "The Beatles",
+              type: "Rock Band",
+              avatar: "https://picsum.photos/200/200?random=11",
+              followers: "45M+ followers"
+            },
+            {
+              id: 3,
+              name: "Michael Jackson",
+              type: "Pop Artist",
+              avatar: "https://picsum.photos/200/200?random=12",
+              followers: "40M+ followers"
+            },
+            {
+              id: 4,
+              name: "Elvis Presley",
+              type: "Rock Artist",
+              avatar: "https://picsum.photos/200/200?random=13",
+              followers: "35M+ followers"
+            },
+            {
+              id: 5,
+              name: "Madonna",
+              type: "Pop Artist",
+              avatar: "https://picsum.photos/200/200?random=14",
+              followers: "30M+ followers"
+            }
+          ];
+          setAllPopularArtists(fallbackArtists);
+          return;
+        }
+
+        // Use artists from database
+        const artists = data.data.map((artist: any) => ({
           id: artist.id,
           name: artist.name,
-          type: artist.type || 'Artist',
-          avatar: artist.image || artist.avatar || `https://picsum.photos/200/200?random=${artist.id}`,
-          followers: artist.followers ? `${artist.followers} followers` : undefined
-        })) || [];
+          type: artist.type,
+          avatar: artist.avatar_url,
+          followers: formatFollowers(artist.followers_count)
+        }));
 
-        console.log('Transformed artists:', transformedArtists.length);
-
-        // Import artists to database for backend API compatibility
-        importArtistsToDatabase(transformedArtists);
-
-        setAllPopularArtists(transformedArtists);
+        console.log('✅ Loaded', artists.length, 'artists from database');
+        setAllPopularArtists(artists);
       } catch (error) {
         console.error('Failed to fetch artists:', error);
 
