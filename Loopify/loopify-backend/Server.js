@@ -903,6 +903,59 @@ app.post('/api/playlists/:playlistId/tracks', authenticateToken, async (req, res
   }
 });
 
+app.delete('/api/playlists/:playlistId/tracks/:trackId', authenticateToken, async (req, res) => {
+  try {
+    const { playlistId, trackId } = req.params;
+
+    // Check if user has permission (owner or editor)
+    const member = await pool.query(
+      'SELECT "role" FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
+      [playlistId, req.user.userId]
+    );
+
+    if (member.rows.length === 0 || !['owner', 'editor'].includes(member.rows[0].role)) {
+      return res.status(403).json({ error: 'No permission to remove tracks' });
+    }
+
+    // Remove track from playlist
+    await pool.query(
+      'DELETE FROM playlistitem WHERE "playlistid" = $1 AND "trackid" = $2',
+      [playlistId, trackId]
+    );
+
+    console.log('✅ Track removed from playlist:', playlistId, 'by user:', req.user.userId);
+    res.json({ message: 'Track removed successfully' });
+  } catch (error) {
+    console.error('❌ Remove track error:', error);
+    res.status(500).json({ error: 'Failed to remove track', details: error.message });
+  }
+});
+
+app.delete('/api/playlists/:playlistId', authenticateToken, async (req, res) => {
+  try {
+    const { playlistId } = req.params;
+
+    // Check if user is the owner
+    const member = await pool.query(
+      'SELECT "role" FROM playlistmember WHERE "playlistid" = $1 AND "userid" = $2',
+      [playlistId, req.user.userId]
+    );
+
+    if (member.rows.length === 0 || member.rows[0].role !== 'owner') {
+      return res.status(403).json({ error: 'Only owners can delete playlists' });
+    }
+
+    // Delete playlist (CASCADE will handle related records)
+    await pool.query('DELETE FROM playlist WHERE "playlistid" = $1', [playlistId]);
+
+    console.log('✅ Playlist deleted:', playlistId, 'by user:', req.user.userId);
+    res.json({ message: 'Playlist deleted successfully' });
+  } catch (error) {
+    console.error('❌ Delete playlist error:', error);
+    res.status(500).json({ error: 'Failed to delete playlist', details: error.message });
+  }
+});
+
 // ==================== PLAYLIST MEMBERS ROUTES ====================
 app.get('/api/playlists/:playlistId/members', authenticateToken, async (req, res) => {
   try {

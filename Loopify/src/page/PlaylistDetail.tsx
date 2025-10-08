@@ -168,11 +168,13 @@ const handleRemoveMember = async (userId: number) => {
 
   const handleDeleteTrack = async (trackId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     if (!confirm('Remove this song from playlist?')) return;
-    
+
     try {
       const token = localStorage.getItem('authToken');
+      console.log('🗑️ Deleting track:', trackId, 'from playlist:', playlistId);
+
       const response = await fetch(
         `${API_BASE_URL}/api/playlists/${playlistId}/tracks/${trackId}`,
         {
@@ -182,9 +184,12 @@ const handleRemoveMember = async (userId: number) => {
       );
 
       if (response.ok) {
+        console.log('✅ Track deleted successfully');
         setTracks(tracks.filter(t => t.id !== trackId));
+        alert('Song removed from playlist!');
       } else {
         const error = await response.json();
+        console.error('❌ Delete track failed:', error);
         alert(error.error || 'Failed to remove track');
       }
     } catch (error) {
@@ -196,16 +201,20 @@ const handleRemoveMember = async (userId: number) => {
   const handleDeletePlaylist = async () => {
     try {
       const token = localStorage.getItem('authToken');
+      console.log('🗑️ Deleting playlist:', playlistId);
+
       const response = await fetch(`${API_BASE_URL}/api/playlists/${playlistId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
-        alert('Playlist deleted!');
+        console.log('✅ Playlist deleted successfully');
+        alert('Playlist deleted successfully!');
         onBackClick();
       } else {
         const error = await response.json();
+        console.error('❌ Delete playlist failed:', error);
         alert(error.error || 'Failed to delete playlist');
       }
     } catch (error) {
@@ -238,10 +247,11 @@ const handleRemoveMember = async (userId: number) => {
             </p>
             
             <div className="action-buttons">
-            <div style={{marginBottom: '10px', fontSize: '12px', color: '#b3b3b3'}}>
-              Your Role: <strong>{playlist?.role || 'Loading...'}</strong>
+            <div style={{marginBottom: '15px', fontSize: '14px', color: '#b3b3b3'}}>
+              Your Role: <strong style={{color: '#1db954'}}>{playlist?.role || 'Loading...'}</strong>
             </div>
 
+            <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap'}}>
             {(playlist?.role === 'Owner' || playlist?.role === 'Editor') && (
                 <>
                 <button
@@ -261,6 +271,7 @@ const handleRemoveMember = async (userId: number) => {
                 </button>
                 </>
             )}
+
             <button
                 className="members-btn"
                 onClick={() => {
@@ -278,6 +289,7 @@ const handleRemoveMember = async (userId: number) => {
                 🗑️ Delete Playlist
                 </button>
             )}
+            </div>
             </div>
           </div>
         </div>
