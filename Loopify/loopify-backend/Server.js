@@ -262,44 +262,70 @@ app.post('/api/auth/register', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // 🆕 Generate sequential user ID
-    const lastUserResult = await pool.query(
-      `SELECT "userid" FROM users 
-       WHERE "userid" LIKE 'user_%' 
-       ORDER BY "userid" DESC 
-       LIMIT 1`
-    );
-    
-    let nextNumber = 1;
-    if (lastUserResult.rows.length > 0) {
-      const lastUserId = lastUserResult.rows[0].userid;
-      // Extract number from 'user_001' -> 001 -> 1
-      const lastNumber = parseInt(lastUserId.replace('user_', ''));
-      nextNumber = lastNumber + 1;
+    // 🆕 Generate sequential user ID with better error handling
+    try {
+      // Only get users with the new format (user_001, user_002, etc.)
+      // that are exactly 8 characters long (user_XXX)
+      const lastUserResult = await pool.query(
+        `SELECT "userid" FROM users 
+         WHERE "userid" ~ '^user_[0-9]{3}$'
+         ORDER BY CAST(SUBSTRING("userid" FROM 6) AS INTEGER) DESC
+         LIMIT 1`
+      );
+      
+      let nextNumber = 1;
+      if (lastUserResult.rows.length > 0) {
+        const lastUserId = lastUserResult.rows[0].userid;
+        const lastNumber = parseInt(lastUserId.replace('user_', ''), 10);
+        nextNumber = lastNumber + 1;
+        console.log('📊 Last user number:', lastNumber, '→ Next:', nextNumber);
+      } else {
+        console.log('📊 No sequential users found, starting from user_001');
+      }
+      
+      // Format with leading zeros: user_001, user_002, etc.
+      const userId = `user_${String(nextNumber).padStart(3, '0')}`;
+      console.log('✅ Generated userId:', userId);
+
+      await pool.query(
+        `INSERT INTO users ("userid", "displayname", email, password, language, country, sex, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'active')`,
+        [userId, displayName, email, hashedPassword, language || 'en', country || 'Thailand', sex]
+      );
+      
+      const token = jwt.sign({ userId, email }, JWT_SECRET, { expiresIn: '7d' });
+      
+      console.log('✅ User registered:', email, 'with ID:', userId);
+      
+      res.json({
+        success: true,
+        token,
+        user: { userId, displayName, email, country, language, sex }
+      });
+      
+    } catch (userIdError) {
+      console.error('❌ User ID generation error:', userIdError);
+      // Fallback to timestamp-based ID if sequential fails
+      const fallbackUserId = 'user_' + Date.now();
+      console.log('⚠️ Using fallback ID:', fallbackUserId);
+      
+      await pool.query(
+        `INSERT INTO users ("userid", "displayname", email, password, language, country, sex, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'active')`,
+        [fallbackUserId, displayName, email, hashedPassword, language || 'en', country || 'Thailand', sex]
+      );
+      
+      const token = jwt.sign({ userId: fallbackUserId, email }, JWT_SECRET, { expiresIn: '7d' });
+      
+      res.json({
+        success: true,
+        token,
+        user: { userId: fallbackUserId, displayName, email, country, language, sex }
+      });
     }
     
-    // Format with leading zeros: user_001, user_002, etc.
-    const userId = `user_${String(nextNumber).padStart(3, '0')}`;
-    
-    console.log('📝 Generated userId:', userId);
-
-    await pool.query(
-      `INSERT INTO users ("userid", "displayname", email, password, language, country, sex, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'active')`,
-      [userId, displayName, email, hashedPassword, language || 'en', country || 'Thailand', sex]
-    );
-    
-    const token = jwt.sign({ userId, email }, JWT_SECRET, { expiresIn: '7d' });
-    
-    console.log('✅ User registered successfully:', email, 'with ID:', userId);
-    
-    res.json({
-      success: true,
-      token,
-      user: { userId, displayName, email, country, language, sex }
-    });
   } catch (error) {
-    console.error('Register error:', error);
+    console.error('❌ Register error:', error);
     res.status(500).json({ error: 'Registration failed', details: error.message });
   }
 });
