@@ -380,7 +380,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/profile', authenticateToken, async (req, res) => {
   try {
     const users = await pool.query(
-      'SELECT "userid", "displayname", email, country, language, status FROM users WHERE "userid" = $1',
+      'SELECT "userid", "displayname", email, country, language, sex, status FROM users WHERE "userid" = $1',
       [req.user.userId]
     );
 
