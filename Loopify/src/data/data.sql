@@ -31,11 +31,7 @@ CREATE TABLE Users (
     UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create Mood table
-CREATE TABLE Mood (
-    MoodID VARCHAR(50) PRIMARY KEY,
-    FeelingName VARCHAR(50) UNIQUE NOT NULL
-);
+
 
 -- Create Artist table (superclass)
 CREATE TABLE Artist (
@@ -124,40 +120,8 @@ CREATE TABLE PlaylistItem (
     FOREIGN KEY (AddedByUserID) REFERENCES Users(UserID) ON DELETE SET NULL
 );
 
--- Create Listening table (M:N relationship)
-CREATE TABLE Listening (
-    UserID VARCHAR(50),
-    TrackID VARCHAR(50),
-    Device VARCHAR(50),
-    ListenedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (UserID, TrackID, ListenedAt),
-    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
-    FOREIGN KEY (TrackID) REFERENCES Track(TrackID) ON DELETE CASCADE
-);
 
--- Create UserArtistFollow table
-CREATE TABLE UserArtistFollow (
-    UserID VARCHAR(50),
-    ArtistID VARCHAR(50),
-    FollowedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    AlertEnabled BOOLEAN DEFAULT TRUE,
-    PRIMARY KEY (UserID, ArtistID),
-    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
-    FOREIGN KEY (ArtistID) REFERENCES Artist(ArtistID) ON DELETE CASCADE
-);
 
--- Create Alert table
-CREATE TABLE Alert (
-    AlertID VARCHAR(50) PRIMARY KEY,
-    UserID VARCHAR(50),
-    TrackID VARCHAR(50),
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    Channel VARCHAR(20) CHECK (Channel IN ('email', 'push', 'inapp')),
-    State VARCHAR(20) CHECK (State IN ('queued', 'sent', 'failed')),
-    DeliveredAt TIMESTAMP,
-    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
-    FOREIGN KEY (TrackID) REFERENCES Track(TrackID) ON DELETE CASCADE
-);
 
 -- Create UserTrackStat table
 CREATE TABLE UserTrackStat (
@@ -173,19 +137,6 @@ CREATE TABLE UserTrackStat (
     FOREIGN KEY (TrackID) REFERENCES Track(TrackID) ON DELETE CASCADE
 );
 
--- Create MoodSession table
-CREATE TABLE MoodSession (
-    SessionID VARCHAR(50) PRIMARY KEY,
-    UserID VARCHAR(50),
-    MoodID VARCHAR(50),
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    TargetDurationMin INT,
-    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
-    FOREIGN KEY (MoodID) REFERENCES Mood(MoodID) ON DELETE CASCADE
-);
-
--- Insert sample data
-
 -- Insert Users
 INSERT INTO Users (UserID, DisplayName, Email, Password, Language, Country, Sex, Status) VALUES
 ('user_001', 'John Smith', 'john.smith@email.com', '$2a$10$hash1', 'en', 'USA', 'Male', 'active'),
@@ -198,16 +149,6 @@ INSERT INTO Users (UserID, DisplayName, Email, Password, Language, Country, Sex,
 ('user_008', 'Tom Brown', 'tom.b@email.com', '$2a$10$hash8', 'en', 'UK', 'Male', 'active'),
 ('user_009', 'Test User', 'test@example.com', '$2a$10$hash9', 'en', 'Thailand', 'Male', 'active');
 
--- Insert Moods
-INSERT INTO Mood (MoodID, FeelingName) VALUES
-('mood_001', 'Happy'),
-('mood_002', 'Sad'),
-('mood_003', 'Energetic'),
-('mood_004', 'Relaxed'),
-('mood_005', 'Focused'),
-('mood_006', 'Romantic'),
-('mood_007', 'Party'),
-('mood_008', 'Melancholic');
 
 -- Insert Artists
 INSERT INTO Artist (ArtistID, Name, Country, DebutYear, Followers, ArtistType) VALUES
@@ -325,21 +266,7 @@ INSERT INTO UserArtistFollow (UserID, ArtistID, AlertEnabled) VALUES
 ('user_005', 'artist_007', true),
 ('user_006', 'artist_003', true);
 
--- Insert Alerts for new releases
-INSERT INTO Alert (AlertID, UserID, TrackID, Channel, State, DeliveredAt) VALUES
-('alert_001', 'user_001', 'track_011', 'push', 'sent', '2025-09-25 10:00:00'),
-('alert_002', 'user_001', 'track_012', 'inapp', 'queued', NULL),
-('alert_003', 'user_003', 'track_011', 'email', 'sent', '2025-09-25 10:05:00');
 
--- Insert Listening history
-INSERT INTO Listening (UserID, TrackID, Device) VALUES
-('user_001', 'track_001', 'mobile'),
-('user_001', 'track_002', 'web'),
-('user_001', 'track_004', 'mobile'),
-('user_002', 'track_003', 'web'),
-('user_002', 'track_007', 'mobile'),
-('user_003', 'track_001', 'desktop'),
-('user_003', 'track_008', 'mobile');
 
 -- Insert UserTrackStat for recommendations
 INSERT INTO UserTrackStat (UserID, TrackID, PlayCount, LikeCount, AddCount, SkipCount) VALUES
@@ -352,17 +279,10 @@ INSERT INTO UserTrackStat (UserID, TrackID, PlayCount, LikeCount, AddCount, Skip
 ('user_003', 'track_008', 56, 1, 1, 3);
 
 -- Insert MoodSession examples
-INSERT INTO MoodSession (SessionID, UserID, MoodID, TargetDurationMin) VALUES
-('session_001', 'user_001', 'mood_001', 60),
-('session_002', 'user_002', 'mood_003', 45),
-('session_003', 'user_003', 'mood_005', 120);
-
 -- Create indexes for better performance
 CREATE INDEX idx_user_email ON Users(Email);
 CREATE INDEX idx_track_release ON Track(ReleaseDate);
 CREATE INDEX idx_playlist_visibility ON Playlist(Visibility);
-CREATE INDEX idx_alert_user ON Alert(UserID);
-CREATE INDEX idx_alert_state ON Alert(State);
 CREATE INDEX idx_follow_user ON UserArtistFollow(UserID);
 CREATE INDEX idx_stats_user ON UserTrackStat(UserID);
 CREATE INDEX idx_listening_user ON Listening(UserID);
