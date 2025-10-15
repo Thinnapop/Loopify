@@ -376,8 +376,35 @@ app.post('/api/auth/login', async (req, res) => {
     res.status(500).json({ error: 'Login failed', details: error.message });
   }
 });
-
 app.get('/api/auth/profile', authenticateToken, async (req, res) => {
+  try {
+    const users = await pool.query(
+      'SELECT "userid", "displayname", email, country, language, sex, status FROM users WHERE "userid" = $1',
+      [req.user.userId]
+    );
+
+    if (users.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = users.rows[0];
+    
+    // ✅ Format response with camelCase
+    res.json({
+      userId: user.userid,
+      displayName: user.displayname,  // Convert to camelCase
+      email: user.email,
+      country: user.country,
+      language: user.language,
+      sex: user.sex,
+      status: user.status
+    });
+  } catch (error) {
+    console.error('Profile error:', error);
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+/*app.get('/api/auth/profile', authenticateToken, async (req, res) => {
   try {
     const users = await pool.query(
       'SELECT "userid", "displayname", email, country, language, sex, status FROM users WHERE "userid" = $1',
@@ -393,7 +420,7 @@ app.get('/api/auth/profile', authenticateToken, async (req, res) => {
     console.error('Profile error:', error);
     res.status(500).json({ error: 'Failed to fetch profile' });
   }
-});
+}); */
 
 // ==================== SONGS ROUTES ====================
 app.get('/api/songs/trending', async (req, res) => {
