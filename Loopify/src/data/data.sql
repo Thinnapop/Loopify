@@ -1,16 +1,13 @@
 -- Loopify Database Schema and Sample Data
 -- Drop tables if they exist (in reverse order of dependencies)
-DROP TABLE IF EXISTS MoodSession CASCADE;
+-- Drop tables if they exist (in reverse order of dependencies)
 DROP TABLE IF EXISTS UserTrackStat CASCADE;
 DROP TABLE IF EXISTS PlaylistItem CASCADE;
-DROP TABLE IF EXISTS Alert CASCADE;
 DROP TABLE IF EXISTS UserArtistFollow CASCADE;
-DROP TABLE IF EXISTS Listening CASCADE;
 DROP TABLE IF EXISTS PlaylistMember CASCADE;
 DROP TABLE IF EXISTS ArtistTrack CASCADE;
 DROP TABLE IF EXISTS Playlist CASCADE;
 DROP TABLE IF EXISTS Track CASCADE;
-DROP TABLE IF EXISTS Mood CASCADE;
 DROP TABLE IF EXISTS Person CASCADE;
 DROP TABLE IF EXISTS GroupArtist CASCADE;
 DROP TABLE IF EXISTS Artist CASCADE;
@@ -122,7 +119,16 @@ CREATE TABLE PlaylistItem (
 
 
 
-
+-- Create UserArtistFollow table (for following artists and alerts)
+CREATE TABLE UserArtistFollow (
+    UserID VARCHAR(50),
+    ArtistID VARCHAR(50),
+    AlertEnabled BOOLEAN DEFAULT FALSE,
+    FollowedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (UserID, ArtistID),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
+    FOREIGN KEY (ArtistID) REFERENCES Artist(ArtistID) ON DELETE CASCADE
+);
 -- Create UserTrackStat table
 CREATE TABLE UserTrackStat (
     UserID VARCHAR(50),
@@ -253,6 +259,7 @@ INSERT INTO PlaylistItem (ListItemID, PlaylistID, TrackID, AddedByUserID, Positi
 ('item_009', 'playlist_005', 'track_008', 'user_006', 3),
 ('item_010', 'playlist_005', 'track_006', 'user_002', 4);
 
+
 -- Insert UserArtistFollow (for alert system)
 INSERT INTO UserArtistFollow (UserID, ArtistID, AlertEnabled) VALUES
 ('user_001', 'artist_001', true),
@@ -265,8 +272,6 @@ INSERT INTO UserArtistFollow (UserID, ArtistID, AlertEnabled) VALUES
 ('user_004', 'artist_006', true),
 ('user_005', 'artist_007', true),
 ('user_006', 'artist_003', true);
-
-
 
 -- Insert UserTrackStat for recommendations
 INSERT INTO UserTrackStat (UserID, TrackID, PlayCount, LikeCount, AddCount, SkipCount) VALUES
@@ -285,7 +290,6 @@ CREATE INDEX idx_track_release ON Track(ReleaseDate);
 CREATE INDEX idx_playlist_visibility ON Playlist(Visibility);
 CREATE INDEX idx_follow_user ON UserArtistFollow(UserID);
 CREATE INDEX idx_stats_user ON UserTrackStat(UserID);
-CREATE INDEX idx_listening_user ON Listening(UserID);
 
 -- Create a view for popular tracks
 CREATE VIEW PopularTracks AS

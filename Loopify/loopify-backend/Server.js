@@ -529,29 +529,6 @@ app.get('/api/artists/popular', async (req, res) => {
   }
 });
 
-app.post('/api/artists/:artistId/follow', authenticateToken, async (req, res) => {
-  try {
-    const { artistId } = req.params;
-    const { action } = req.body;
-    
-    if (action === 'follow') {
-      await pool.query(
-        'INSERT INTO userartistfollow ("userid", "artistid", "alertenabled") VALUES ($1, $2, true)',
-        [req.user.userId, artistId]
-      );
-      res.json({ message: 'Artist followed successfully' });
-    } else {
-      await pool.query(
-        'DELETE FROM userartistfollow WHERE "userid" = $1 AND "artistid" = $2',
-        [req.user.userId, artistId]
-      );
-      res.json({ message: 'Artist unfollowed successfully' });
-    }
-  } catch (error) {
-    console.error('Follow/unfollow error:', error);
-    res.status(500).json({ error: 'Failed to update follow status' });
-  }
-});
 
 // ==================== PLAYLIST ROUTES ====================
 app.get('/api/playlists/collaborative', authenticateToken, async (req, res) => {
