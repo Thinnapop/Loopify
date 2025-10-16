@@ -43,8 +43,6 @@ A full-stack music streaming application with collaborative playlist features, b
 - **TypeScript** - Type-safe JavaScript development
 - **Vite** - Fast build tool and development server
 - **React Router DOM** - Client-side routing
-- **Bootstrap** - Responsive UI components and styling
-- **Three.js & React Three Fiber** - 3D visualizations and animations
 
 ### Backend
 - **Node.js** - JavaScript runtime environment
@@ -128,13 +126,6 @@ loopify-backend/
 - **Playlist** - Playlist information
 - **PlaylistMember** - Playlist collaboration
 - **PlaylistItem** - Tracks within playlists
-
-#### Engagement
-- **UserTrackStat** - User-track interaction statistics
-- **Listening** - Listening history and analytics
-- **Alert** - Notification and alert system
-- **Mood** - Mood categories for playlists
-- **MoodSession** - Mood-based playlist sessions
 
 ## 🔌 API Endpoints
 
