@@ -120,7 +120,7 @@ CREATE TABLE PlaylistItem (
 
 
 -- Create UserArtistFollow table (for following artists and alerts)
-CREATE TABLE UserArtistFollow (
+CREATE TABLE userartistfollow (
     UserID VARCHAR(50),
     ArtistID VARCHAR(50),
     AlertEnabled BOOLEAN DEFAULT FALSE,
@@ -261,7 +261,7 @@ INSERT INTO PlaylistItem (ListItemID, PlaylistID, TrackID, AddedByUserID, Positi
 
 
 -- Insert UserArtistFollow (for alert system)
-INSERT INTO UserArtistFollow (UserID, ArtistID, AlertEnabled) VALUES
+/*INSERT INTO UserArtistFollow (UserID, ArtistID, AlertEnabled) VALUES
 ('user_001', 'artist_001', true),
 ('user_001', 'artist_002', true),
 ('user_001', 'artist_005', false),
@@ -282,8 +282,8 @@ INSERT INTO UserTrackStat (UserID, TrackID, PlayCount, LikeCount, AddCount, Skip
 ('user_002', 'track_007', 34, 1, 1, 1),
 ('user_003', 'track_001', 89, 1, 0, 0),
 ('user_003', 'track_008', 56, 1, 1, 3);
+*/
 
--- Insert MoodSession examples
 -- Create indexes for better performance
 CREATE INDEX idx_user_email ON Users(Email);
 CREATE INDEX idx_track_release ON Track(ReleaseDate);
